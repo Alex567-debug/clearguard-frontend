@@ -516,7 +516,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
 
         {/* API status banner */}
         {isLiveData ? (
-          <div style={{
+          <div className="cg-no-print" style={{
             background:"#ecfdf5",border:`1px solid #6ee7b7`,borderRadius:8,
             padding:"10px 16px",marginBottom:20,fontSize:13,color:T.success,
             fontWeight:600,display:"flex",alignItems:"center",gap:8,
@@ -529,14 +529,14 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
             )}
           </div>
         ) : apiError ? (
-          <div style={{
+          <div className="cg-no-print" style={{
             background:"#fff8f8",border:`1px solid #fca5a5`,borderRadius:8,
             padding:"10px 16px",marginBottom:20,fontSize:13,color:T.danger,fontWeight:600,
           }}>
             ⚠ API unreachable ({apiError}) — showing demo data
           </div>
         ) : (
-          <div style={{
+          <div className="cg-no-print" style={{
             background:"#fffbeb",border:`1px solid #fde68a`,borderRadius:8,
             padding:"10px 16px",marginBottom:20,fontSize:13,color:T.warn,fontWeight:600,
           }}>
@@ -606,7 +606,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
             </div>
             <div style={{display:"flex",gap:8}}>
               {exceedances.length>0 && <Pill label={`${exceedances.length} Exceedances`} color={T.danger}/>}
-              {pending.length>0     && <Pill label={`${pending.length} Awaiting DMR`}   color={T.muted}/>}
+              {pending.length>0     && <span className="cg-no-print"><Pill label={`${pending.length} Awaiting DMR`}   color={T.muted}/></span>}
               {rows.filter(r=>r.status==="pass").length>0 &&
                 <Pill label={`${rows.filter(r=>r.status==="pass").length} Compliant`}   color={T.success}/>}
             </div>
