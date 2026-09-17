@@ -492,11 +492,16 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     : 100;
 
   const handleExportPDF = () => {
+    // Find Netlify badge (injected dynamically — CSS @media print can't catch it)
+    const netlifyBadge = document.querySelector('a[href*="netlify"]')?.closest('div') 
+                      || document.querySelector('[data-netlify-badge]')
+                      || document.querySelector('a[href*="netlify"]')?.parentElement;
+
     const style = document.createElement("style");
     style.id = "cg-print-styles";
     style.textContent = `
       @media print {
-        nav, .cg-no-print, [data-testid="netlify-badge"], a[href*="netlify"] { display: none !important; }
+        nav, .cg-no-print { display: none !important; }
         body, #root { background: white !important; }
         * { -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important; }
@@ -504,9 +509,18 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
       }
     `;
     document.head.appendChild(style);
+
+    // Hide badge before print
+    if (netlifyBadge) netlifyBadge.style.setProperty("display", "none", "important");
+
     window.print();
-    const el = document.getElementById("cg-print-styles");
-    if (el) el.remove();
+
+    // Restore everything after print dialog closes
+    setTimeout(() => {
+      const el = document.getElementById("cg-print-styles");
+      if (el) el.remove();
+      if (netlifyBadge) netlifyBadge.style.removeProperty("display");
+    }, 1000);
   };
 
   return (
