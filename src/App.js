@@ -496,7 +496,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     style.id = "cg-print-styles";
     style.textContent = `
       @media print {
-        nav, .cg-no-print { display: none !important; }
+        nav, .cg-no-print, [data-testid="netlify-badge"], a[href*="netlify"] { display: none !important; }
         body, #root { background: white !important; }
         * { -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important; }
