@@ -492,11 +492,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     : 100;
 
   const handleExportPDF = () => {
-    // Find Netlify badge (injected dynamically — CSS @media print can't catch it)
-    const netlifyBadge = document.querySelector('a[href*="netlify"]')?.closest('div') 
-                      || document.querySelector('[data-netlify-badge]')
-                      || document.querySelector('a[href*="netlify"]')?.parentElement;
-
+    // Inject print CSS
     const style = document.createElement("style");
     style.id = "cg-print-styles";
     style.textContent = `
@@ -510,16 +506,34 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     `;
     document.head.appendChild(style);
 
-    // Hide badge before print
-    if (netlifyBadge) netlifyBadge.style.setProperty("display", "none", "important");
+    // Find ALL fixed-position elements (Netlify badge is fixed)
+    // and hide them before printing
+    const hiddenEls = [];
+    document.querySelectorAll("*").forEach(el => {
+      const computed = window.getComputedStyle(el);
+      const isFixed = computed.position === "fixed";
+      const isNotNav = !el.closest("nav");
+      const hasNetlify = el.textContent.toLowerCase().includes("netlify") ||
+                         el.innerHTML.toLowerCase().includes("netlify");
+      if ((isFixed && isNotNav) || hasNetlify) {
+        el.setAttribute("data-cg-hidden", el.style.display);
+        el.style.setProperty("display", "none", "important");
+        hiddenEls.push(el);
+      }
+    });
 
     window.print();
 
-    // Restore everything after print dialog closes
+    // Restore everything after print
     setTimeout(() => {
       const el = document.getElementById("cg-print-styles");
       if (el) el.remove();
-      if (netlifyBadge) netlifyBadge.style.removeProperty("display");
+      hiddenEls.forEach(el => {
+        const prev = el.getAttribute("data-cg-hidden");
+        el.style.removeProperty("display");
+        if (prev) el.style.display = prev;
+        el.removeAttribute("data-cg-hidden");
+      });
     }, 1000);
   };
 
