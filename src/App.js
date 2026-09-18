@@ -196,6 +196,14 @@ function Pill({ label, color }) {
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 function Nav({ onReset, onExport }) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.innerWidth < 620
+  );
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 620);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
   return (
     <nav style={{
       background:T.surface, borderBottom:`1px solid ${T.border}`,
@@ -312,22 +320,31 @@ function Nav({ onReset, onExport }) {
         </svg>
                 <span style={{ fontWeight:800, fontSize:15, color:T.text }}>ClearGuard</span>
       </div>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 6 : 10 }}>
         {onReset && (
           <button onClick={onReset} className="cg-no-print" style={{
-            fontSize:12, color:T.muted, background:"none",
-            border:`1px solid ${T.border}`, padding:"5px 12px",
+            fontSize: isMobile ? 11 : 12,
+            color:T.muted, background:"none",
+            border:`1px solid ${T.border}`,
+            padding: isMobile ? "4px 8px" : "5px 12px",
             borderRadius:6, cursor:"pointer", fontFamily:"inherit",
-          }}>↑ New upload</button>
+            whiteSpace:"nowrap",
+          }}>{isMobile ? "↑" : "↑ New upload"}</button>
         )}
         <button onClick={onExport} style={{
-          fontSize:12, fontWeight:700, background:T.accent, color:"#fff",
-          border:"none", padding:"6px 14px", borderRadius:6,
-          cursor:"pointer", fontFamily:"inherit",
-        }}>↓ Export PDF</button>
+          fontSize: isMobile ? 11 : 12,
+          fontWeight:700, background:T.accent, color:"#fff",
+          border:"none",
+          padding: isMobile ? "5px 10px" : "6px 14px",
+          borderRadius:6, cursor:"pointer", fontFamily:"inherit",
+          whiteSpace:"nowrap",
+        }}>{isMobile ? "↓ PDF" : "↓ Export PDF"}</button>
         <div style={{
-          width:30, height:30, borderRadius:"50%", background:"#e2e8f0",
+          width: isMobile ? 28 : 30,
+          height: isMobile ? 28 : 30,
+          borderRadius:"50%", background:"#e2e8f0",
           display:"flex", alignItems:"center", justifyContent:"center",
+          flexShrink:0,
         }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
@@ -534,6 +551,21 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     }, 1000);
   };
 
+  const tableScrollRef = useRef(null);
+  const scrollTable = (dir) => {
+    tableScrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
+  };
+  const arrowStyle = (side) => ({
+    position:"absolute", [side]:-14, top:"50%",
+    transform:"translateY(-50%)", zIndex:10,
+    width:28, height:28, borderRadius:"50%",
+    background:"white", border:`1px solid ${T.border}`,
+    color:T.text, fontSize:18, cursor:"pointer",
+    display:"flex", alignItems:"center", justifyContent:"center",
+    boxShadow:"0 2px 6px rgba(0,0,0,0.10)",
+    fontFamily:"inherit", lineHeight:1, padding:0,
+  });
+
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Nav onReset={onReset} onExport={handleExportPDF}/>
@@ -637,8 +669,13 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
             </div>
           </div>
 
-          <div style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <div style={{position:"relative", padding:"0 16px"}}>
+            {/* Left scroll arrow */}
+            <button onClick={()=>scrollTable(-1)} style={arrowStyle("left")}>‹</button>
+
+            {/* Scrollable table */}
+            <div ref={tableScrollRef} style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13, minWidth:700}}>
               <thead>
                 <tr style={{background:"#f8fafc"}}>
                   {["Parameter","Full Name","Limit Type","Permit Limit","Measured","Deviation","Freq","Sample","Status"].map(h=>(
@@ -683,7 +720,11 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
                 })}
               </tbody>
             </table>
-          </div>
+            </div>{/* end scrollable */}
+
+            {/* Right scroll arrow */}
+            <button onClick={()=>scrollTable(1)} style={arrowStyle("right")}>›</button>
+          </div>{/* end relative container */}
 
           <div style={{
             padding:"13px 22px",borderTop:`1px solid ${T.border}`,
