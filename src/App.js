@@ -435,7 +435,6 @@ function Nav({ onReset, onExport }) {
               </div>
             )}
           </div>
-        </div>
       </div>
     </nav>
   );
