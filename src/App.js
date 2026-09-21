@@ -313,12 +313,9 @@ function Nav({ onReset, onExport }) {
             <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
           </g>
         </svg>
-        {/* Текст скрыт на мобильном — освобождает ~80px для аватара */}
-        {!isMobile && (
-          <span style={{ fontWeight:800, fontSize:15, color:T.text }}>
-            ClearGuard
-          </span>
-        )}
+        <span style={{ fontWeight:800, fontSize: isMobile ? 11 : 15, color:T.text, letterSpacing: isMobile ? 0 : undefined }}>
+          ClearGuard
+        </span>
       </div>
 
       {/* ── Action buttons ── */}
