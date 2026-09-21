@@ -161,16 +161,41 @@ function Pill({ label, color }) {
 }
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
-// FIX: removed fixed height:56, hide avatar on mobile, compact buttons, clear labels
 function Nav({ onReset, onExport }) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < 620
   );
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 620);
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
+
+  // Закрываем дропдаун при клике вне него
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const menuItems = [
+    { icon:"👤", label:"Guest Session",    sub:"Not signed in",       disabled:true  },
+    { icon:"🔑", label:"Sign In",          sub:"Access your account", action:"signin" },
+    { divider: true },
+    { icon:"⚙️", label:"Settings",         sub:"Coming soon",         disabled:true  },
+    { icon:"🛡️", label:"Trust & Security", sub:"Zero data retention policy", action:"trust" },
+    { icon:"📋", label:"Help & Docs",      sub:"EPA compliance guide",action:"help"  },
+    { divider: true },
+    { icon:"🚪", label:"Sign Out",         sub:"",                    disabled:true  },
+  ];
 
   return (
     <nav style={{
@@ -335,19 +360,78 @@ function Nav({ onReset, onExport }) {
           ↓ Export PDF
         </button>
 
-        {/* FIX: аватар скрыт на мобильном — освобождает место для кнопок */}
+        {/* ── Avatar с дропдауном (скрыт на мобильном) ── */}
         {!isMobile && (
-          <div style={{
-            width:30, height:30, borderRadius:"50%",
-            background:"#e2e8f0",
-            display:"flex", alignItems:"center", justifyContent:"center",
-            flexShrink:0,
-          }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
-              <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
-                    stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
+          <div ref={menuRef} style={{ position:"relative", flexShrink:0 }}>
+            {/* Кнопка-аватар */}
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="cg-no-print"
+              title="Account menu"
+              style={{
+                width:30, height:30, borderRadius:"50%",
+                background: menuOpen ? "#cbd5e1" : "#e2e8f0",
+                border: menuOpen ? `2px solid ${T.accent}` : "2px solid transparent",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                cursor:"pointer", flexShrink:0, padding:0,
+                transition:"border-color 0.15s, background 0.15s",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
+                <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
+                      stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+
+            {/* Дропдаун */}
+            {menuOpen && (
+              <div style={{
+                position:"absolute", top:"calc(100% + 8px)", right:0,
+                width:230, background:T.surface,
+                border:`1px solid ${T.border}`, borderRadius:10,
+                boxShadow:"0 8px 24px rgba(0,0,0,0.10)",
+                zIndex:200, overflow:"hidden",
+              }}>
+                {menuItems.map((item, i) => {
+                  if (item.divider) return (
+                    <div key={i} style={{ height:1, background:T.border, margin:"4px 0" }}/>
+                  );
+                  return (
+                    <button
+                      key={i}
+                      disabled={item.disabled}
+                      onClick={() => {
+                        if (item.action === "help") {
+                          window.open("https://www.epa.gov/npdes","_blank");
+                        }
+                        if (item.action === "trust") {
+                          alert("ClearGuard Zero Data Retention Policy:\n\n• Files deleted immediately after parsing\n• TLS 1.3 in transit\n• AES-256 at rest\n• No AI training on your data");
+                        }
+                        setMenuOpen(false);
+                      }}
+                      style={{
+                        display:"flex", alignItems:"center", gap:10,
+                        width:"100%", padding:"10px 14px",
+                        background:"none", border:"none",
+                        cursor: item.disabled ? "default" : "pointer",
+                        textAlign:"left", fontFamily:"inherit",
+                        opacity: item.disabled ? 0.45 : 1,
+                        transition:"background 0.1s",
+                      }}
+                      onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "#f8fafc"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+                    >
+                      <span style={{ fontSize:15 }}>{item.icon}</span>
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:600, color:T.text }}>{item.label}</div>
+                        {item.sub && <div style={{ fontSize:10, color:T.subtle, marginTop:1 }}>{item.sub}</div>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
