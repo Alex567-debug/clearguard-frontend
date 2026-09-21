@@ -1,17 +1,8 @@
 /**
- * NPDES Clarity — Dashboard v2 (Live API Integration)
- * =====================================================
+ * ClearGuard — NPDES Compliance Dashboard
+ * ========================================
  * Connects to:  https://saas-npdes-backend-production.up.railway.app
  * Endpoint:     POST /api/parse-permit  (multipart/form-data, field: "file")
- *
- * Flow:
- *   1. User drops PDF → multipart POST → Railway backend
- *   2. Backend: pdfplumber → regex → Claude Haiku fallback
- *   3. Response: array of param objects (or {parameters:[...]} wrapper)
- *   4. mapApiResponse() normalises → table rows
- *   5. Fallback to MOCK_DATA on any error (demo stays stable)
- *
- * If your backend returns a different JSON shape, edit mapApiResponse() only.
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -37,7 +28,6 @@ const T = {
   rowPnd:  "#f8fafc",
 };
 
-// Full names for parameters coming from API (keyed by what API returns)
 const PARAM_NAMES = {
   "BOD₅":       "5-Day Biochemical Oxygen Demand",
   "BOD5":       "5-Day Biochemical Oxygen Demand",
@@ -59,7 +49,7 @@ const PARAM_NAMES = {
   "Mercury":    "Total Mercury",
 };
 
-// ─── MOCK DATA (fallback / demo mode) ────────────────────────────────────────
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
 const MOCK_FACILITY = {
   name:      "Westbrook Industrial Manufacturing, LLC",
   permitNo:  "IN0012345",
@@ -70,35 +60,22 @@ const MOCK_FACILITY = {
 };
 
 const MOCK_ROWS = [
-  { id:1, param:"BOD₅",     fullName:"5-Day Biochemical Oxygen Demand", limitType:"Monthly Avg", limitVal:30.0,  limitStr:"30.0 mg/L",     measured:28.5,  unit:"mg/L",       freq:"2×/month",  sample:"Composite", status:"pass"   },
-  { id:2, param:"TSS",      fullName:"Total Suspended Solids",          limitType:"Monthly Avg", limitVal:30.0,  limitStr:"30.0 mg/L",     measured:47.2,  unit:"mg/L",       freq:"2×/month",  sample:"Composite", status:"exceed" },
-  { id:3, param:"pH",       fullName:"Hydrogen Ion Concentration",      limitType:"Inst. Max",   limitVal:9.0,   limitStr:"6.0–9.0 SU",    measured:9.4,   unit:"SU",         freq:"Continuous",sample:"Meter",     status:"exceed" },
-  { id:4, param:"NH₃-N",   fullName:"Ammonia Nitrogen",                limitType:"Monthly Avg", limitVal:5.0,   limitStr:"5.0 mg/L",      measured:3.2,   unit:"mg/L",       freq:"Monthly",   sample:"Composite", status:"pass"   },
-  { id:5, param:"Total N",  fullName:"Total Nitrogen",                  limitType:"Monthly Avg", limitVal:10.0,  limitStr:"10.0 mg/L",     measured:12.8,  unit:"mg/L",       freq:"Monthly",   sample:"Composite", status:"exceed" },
-  { id:6, param:"E. coli",  fullName:"Fecal Coliform (E. coli)",        limitType:"Geo. Mean",   limitVal:126,   limitStr:"126 CFU/100mL", measured:89,    unit:"CFU/100mL",  freq:"Monthly",   sample:"Grab",      status:"pass"   },
-  { id:7, param:"Cu (Total)",fullName:"Total Copper",                   limitType:"Daily Max",   limitVal:0.017, limitStr:"0.017 mg/L",    measured:0.015, unit:"mg/L",       freq:"Quarterly", sample:"Composite", status:"pass"   },
-  { id:8, param:"Flow",     fullName:"Effluent Flow Rate",              limitType:"Daily Avg",   limitVal:2.50,  limitStr:"2.50 MGD",      measured:2.10,  unit:"MGD",        freq:"Daily",     sample:"Meter",     status:"pass"   },
+  { id:1, param:"BOD₅",      fullName:"5-Day Biochemical Oxygen Demand", limitType:"Monthly Avg", limitVal:30.0,  limitStr:"30.0 mg/L",     measured:28.5,  unit:"mg/L",      freq:"2×/month",  sample:"Composite", status:"pass"   },
+  { id:2, param:"TSS",       fullName:"Total Suspended Solids",          limitType:"Monthly Avg", limitVal:30.0,  limitStr:"30.0 mg/L",     measured:47.2,  unit:"mg/L",      freq:"2×/month",  sample:"Composite", status:"exceed" },
+  { id:3, param:"pH",        fullName:"Hydrogen Ion Concentration",      limitType:"Inst. Max",   limitVal:9.0,   limitStr:"6.0–9.0 SU",    measured:9.4,   unit:"SU",        freq:"Continuous",sample:"Meter",     status:"exceed" },
+  { id:4, param:"NH₃-N",    fullName:"Ammonia Nitrogen",                limitType:"Monthly Avg", limitVal:5.0,   limitStr:"5.0 mg/L",      measured:3.2,   unit:"mg/L",      freq:"Monthly",   sample:"Composite", status:"pass"   },
+  { id:5, param:"Total N",   fullName:"Total Nitrogen",                  limitType:"Monthly Avg", limitVal:10.0,  limitStr:"10.0 mg/L",     measured:12.8,  unit:"mg/L",      freq:"Monthly",   sample:"Composite", status:"exceed" },
+  { id:6, param:"E. coli",   fullName:"Fecal Coliform (E. coli)",        limitType:"Geo. Mean",   limitVal:126,   limitStr:"126 CFU/100mL", measured:89,    unit:"CFU/100mL", freq:"Monthly",   sample:"Grab",      status:"pass"   },
+  { id:7, param:"Cu (Total)",fullName:"Total Copper",                    limitType:"Daily Max",   limitVal:0.017, limitStr:"0.017 mg/L",    measured:0.015, unit:"mg/L",      freq:"Quarterly", sample:"Composite", status:"pass"   },
+  { id:8, param:"Flow",      fullName:"Effluent Flow Rate",              limitType:"Daily Avg",   limitVal:2.50,  limitStr:"2.50 MGD",      measured:2.10,  unit:"MGD",       freq:"Daily",     sample:"Meter",     status:"pass"   },
 ];
 
-// ─── API RESPONSE MAPPER ─────────────────────────────────────────────────────
-/**
- * Normalise whatever the backend sends into our internal row format.
- *
- * Backend may return:
- *   A)  [ { parameter, monthly_avg, daily_max, unit, freq, source }, ... ]
- *   B)  { parameters: [...], permit_number, facility_name, outfall }
- *   C)  { data: [...], meta: {...} }          ← future-proof
- *
- * If your backend shape is different, ONLY edit this function.
- */
+// ─── API MAPPER ───────────────────────────────────────────────────────────────
 function mapApiResponse(data) {
-  // Unwrap outer envelope (case B / C)
   let params = data;
   if (!Array.isArray(data)) {
-    // Backend returns { status, filename, limits_found, limits: [...] }
     params = data.limits || data.parameters || data.data || data.results || [];
   }
-
   const rows = params
     .filter(p => p && p.parameter)
     .map((p, i) => {
@@ -106,41 +83,33 @@ function mapApiResponse(data) {
       const dailyRaw   = p.daily_max   ?? p.dailyMax   ?? null;
       const limitVal   = parseFloat(monthlyRaw) || parseFloat(dailyRaw) || null;
       const unit       = p.unit || "—";
-
-      const limitStr = monthlyRaw
+      const limitStr   = monthlyRaw
         ? `${monthlyRaw} ${unit}`.trim()
-        : dailyRaw
-          ? `${dailyRaw} ${unit} (daily max)`.trim()
-          : "—";
-
+        : dailyRaw ? `${dailyRaw} ${unit} (daily max)`.trim() : "—";
       return {
         id:        i + 1,
         param:     p.parameter,
         fullName:  PARAM_NAMES[p.parameter] || p.parameter,
         limitType: monthlyRaw ? "Monthly Avg" : "Daily Max",
-        limitVal,
-        limitStr,
-        measured:  null,           // limits-only extraction; needs DMR for measurements
+        limitVal, limitStr,
+        measured:  null,
         unit,
         freq:      p.freq || p.monitoring_freq || "—",
         sample:    p.sample_type || p.sample || "—",
-        status:    "pending",      // no exceedance calc without DMR data
+        status:    "pending",
         source:    p.source || "API",
       };
     });
-
-  // Build facility object (best-effort from envelope or fallback)
   const facility = {
-    name:      data.facility_name || data.facility || "—",
-    permitNo:  data.permit_number || data.permit_no || data.permitNo || "—",
-    outfall:   data.outfall_id    || data.outfall   || "—",   // ← outfall_id из нового формата
-    period:    data.period || data.effective_date  || data.reporting_period || "—",
-    expires:   data.expires || data.expiration_date || data.expiration      || "—",
-    authority: data.authority || "U.S. EPA",
-    sourceFile:   data.filename      || "—",
-    limitsFound:  data.limits_found  ?? params.length,
+    name:       data.facility_name || data.facility || "—",
+    permitNo:   data.permit_number || data.permit_no || data.permitNo || "—",
+    outfall:    data.outfall_id    || data.outfall   || "—",
+    period:     data.period || data.effective_date  || data.reporting_period || "—",
+    expires:    data.expires || data.expiration_date || data.expiration      || "—",
+    authority:  data.authority || "U.S. EPA",
+    sourceFile: data.filename      || "—",
+    limitsFound:data.limits_found  ?? params.length,
   };
-
   return { rows, facility };
 }
 
@@ -155,20 +124,17 @@ function deviation(row) {
 // ─── MICRO-COMPONENTS ─────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const cfg = {
-    exceed:  { bg:"#fef2f2", color:T.danger,  border:"#fca5a5", text:"⚠  Exceedance"  },
-    pass:    { bg:"#ecfdf5", color:T.success, border:"#6ee7b7", text:"✓  Compliant"   },
-    pending: { bg:"#f8fafc", color:T.muted,   border:"#dde3ed", text:"↑  Awaiting DMR"},
+    exceed:  { bg:"#fef2f2", color:T.danger,  border:"#fca5a5", text:"⚠  Exceedance"   },
+    pass:    { bg:"#ecfdf5", color:T.success, border:"#6ee7b7", text:"✓  Compliant"    },
+    pending: { bg:"#f8fafc", color:T.muted,   border:"#dde3ed", text:"↑  Awaiting DMR" },
   }[status] || { bg:"#f8fafc", color:T.muted, border:T.border, text:status };
-
   return (
     <span style={{
       backgroundColor:cfg.bg, color:cfg.color,
       border:`1px solid ${cfg.border}`,
       borderRadius:5, padding:"3px 9px",
       fontSize:11, fontWeight:700, letterSpacing:"0.02em", whiteSpace:"nowrap",
-    }}>
-      {cfg.text}
-    </span>
+    }}>{cfg.text}</span>
   );
 }
 
@@ -195,6 +161,7 @@ function Pill({ label, color }) {
 }
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
+// FIX: removed fixed height:56, hide avatar on mobile, compact buttons, clear labels
 function Nav({ onReset, onExport }) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < 620
@@ -204,15 +171,26 @@ function Nav({ onReset, onExport }) {
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
+
   return (
     <nav style={{
-      background:T.surface, borderBottom:`1px solid ${T.border}`,
-      height:56, display:"flex", alignItems:"center",
-      justifyContent:"space-between", padding:"0 28px",
+      background:T.surface,
+      borderBottom:`1px solid ${T.border}`,
+      minHeight:52,
+      display:"flex", alignItems:"center",
+      justifyContent:"space-between",
+      padding: isMobile ? "8px 12px" : "0 28px",
       position:"sticky", top:0, zIndex:100,
+      gap: 8,
     }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-        <svg width="44" height="48" viewBox="0 0 600 600" fill="none">
+
+      {/* ── Logo + brand ── */}
+      <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 6 : 10, flexShrink:0 }}>
+        <svg
+          width={isMobile ? 30 : 44}
+          height={isMobile ? 33 : 48}
+          viewBox="0 0 600 600" fill="none"
+        >
           <defs>
             <linearGradient id="navDropGrad" x1="100%" y1="100%" x2="0%" y2="0%">
               <stop offset="0%"   stopColor="#00FFA3"/>
@@ -233,8 +211,6 @@ function Nav({ onReset, onExport }) {
               <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"/>
             </clipPath>
           </defs>
-
-          {/* ── BACKGROUND WIREFRAME ── */}
           <g clipPath="url(#navShieldClip)" stroke="#0A1526" strokeWidth="2.8" fill="none" opacity="0.95">
             <line x1="300" y1="142" x2="190" y2="244"/>
             <line x1="300" y1="142" x2="410" y2="244"/>
@@ -267,8 +243,6 @@ function Nav({ onReset, onExport }) {
             <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
             <circle cx="300" cy="474" r="7"/><circle cx="300" cy="562" r="7"/>
           </g>
-
-          {/* ── WATER DROP ── */}
           <path d="M300,172 C300,172 380,280 380,358 C380,405 344,444 300,444 C256,444 220,405 220,358 C220,280 300,172 300,172 Z"
             stroke="#0A1526" strokeWidth="14" fill="none" strokeLinejoin="round"/>
           <path d="M300,178 C300,178 374,282 374,357 C374,401 341,438 300,438 C259,438 226,401 226,357 C226,282 300,178 300,178 Z"
@@ -276,8 +250,6 @@ function Nav({ onReset, onExport }) {
           <path d="M300,195 C300,195 360,288 360,355 C360,394 333,424 300,424 C267,424 240,394 240,355 C240,288 300,195 300,195 Z"
             stroke="url(#navDropGrad)" strokeWidth="5" fill="none"
             filter="url(#navNeonGlow)" strokeLinejoin="round"/>
-
-          {/* ── PCB TRACES ── */}
           <path d="M300,240 V272 H256 L242,286 V318"
             stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
             strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
@@ -295,8 +267,6 @@ function Nav({ onReset, onExport }) {
             <circle cx="326" cy="322" r="6"/>  <circle cx="300" cy="346" r="5"/>
             <circle cx="256" cy="414" r="6"/>  <circle cx="350" cy="394" r="6"/>
           </g>
-
-          {/* ── FOREGROUND SHIELD ── */}
           <path d="M108,118 L300,158 L492,118 L492,328 L300,532 L108,328 Z"
             stroke="#0A1526" strokeWidth="1.5" fill="none" opacity="0.45"/>
           <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"
@@ -318,40 +288,68 @@ function Nav({ onReset, onExport }) {
             <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
           </g>
         </svg>
-                <span style={{ fontWeight:800, fontSize:15, color:T.text }}>ClearGuard</span>
+        <span style={{ fontWeight:800, fontSize: isMobile ? 13 : 15, color:T.text }}>
+          ClearGuard
+        </span>
       </div>
-      <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 6 : 10 }}>
+
+      {/* ── Action buttons ── */}
+      <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 6 : 10, flexShrink:0 }}>
         {onReset && (
-          <button onClick={onReset} className="cg-no-print" style={{
-            fontSize: isMobile ? 11 : 12,
-            color:T.muted, background:"none",
-            border:`1px solid ${T.border}`,
-            padding: isMobile ? "4px 8px" : "5px 12px",
-            borderRadius:6, cursor:"pointer", fontFamily:"inherit",
-            whiteSpace:"nowrap",
-          }}>{isMobile ? "↑" : "↑ New upload"}</button>
+          <button
+            onClick={onReset}
+            className="cg-no-print"
+            style={{
+              fontSize:     isMobile ? 10 : 12,
+              color:        T.muted,
+              background:   "none",
+              border:       `1px solid ${T.border}`,
+              padding:      isMobile ? "5px 9px" : "5px 12px",
+              borderRadius: 6,
+              cursor:       "pointer",
+              fontFamily:   "inherit",
+              fontWeight:   600,
+              whiteSpace:   "nowrap",
+            }}
+          >
+            {/* FIX: "↑ Upload" on mobile — понятно, что это кнопка возврата */}
+            {isMobile ? "↑ Upload" : "↑ New upload"}
+          </button>
         )}
-        <button onClick={onExport} style={{
-          fontSize: isMobile ? 11 : 12,
-          fontWeight:700, background:T.accent, color:"#fff",
-          border:"none",
-          padding: isMobile ? "5px 10px" : "6px 14px",
-          borderRadius:6, cursor:"pointer", fontFamily:"inherit",
-          whiteSpace:"nowrap",
-        }}>{isMobile ? "↓ PDF" : "↓ Export PDF"}</button>
-        <div style={{
-          width: isMobile ? 28 : 30,
-          height: isMobile ? 28 : 30,
-          borderRadius:"50%", background:"#e2e8f0",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          flexShrink:0,
-        }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
-            <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
-                  stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-        </div>
+        <button
+          onClick={onExport}
+          style={{
+            fontSize:     isMobile ? 10 : 12,
+            fontWeight:   700,
+            background:   T.accent,
+            color:        "#fff",
+            border:       "none",
+            padding:      isMobile ? "5px 9px" : "6px 14px",
+            borderRadius: 6,
+            cursor:       "pointer",
+            fontFamily:   "inherit",
+            whiteSpace:   "nowrap",
+          }}
+        >
+          {/* FIX: всегда полный текст "↓ Export PDF" */}
+          ↓ Export PDF
+        </button>
+
+        {/* FIX: аватар скрыт на мобильном — освобождает место для кнопок */}
+        {!isMobile && (
+          <div style={{
+            width:30, height:30, borderRadius:"50%",
+            background:"#e2e8f0",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            flexShrink:0,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
+              <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
+                    stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+        )}
       </div>
     </nav>
   );
@@ -361,13 +359,11 @@ function Nav({ onReset, onExport }) {
 function UploadStage({ onFile }) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
-
   const handleDrop = (e) => {
     e.preventDefault(); setDragging(false);
     const f = e.dataTransfer.files[0];
     if (f) onFile(f);
   };
-
   return (
     <div style={{ minHeight:"100vh", background:T.bg }}>
       <Nav />
@@ -380,7 +376,6 @@ function UploadStage({ onFile }) {
             Upload your permit. Get a full violation report in under 5 seconds.
           </p>
         </div>
-
         <div
           onDrop={handleDrop}
           onDragOver={(e)=>{e.preventDefault();setDragging(true);}}
@@ -415,7 +410,6 @@ function UploadStage({ onFile }) {
             padding:"8px 20px", borderRadius:7, border:`1px solid #bfdbfe`,
           }}>Select PDF file</span>
         </div>
-
         <div style={{textAlign:"center",marginTop:16}}>
           <button onClick={()=>onFile(null)} style={{
             fontSize:13, color:T.accent, background:"none",
@@ -423,7 +417,6 @@ function UploadStage({ onFile }) {
             textDecoration:"underline",
           }}>→ Load demo permit (IN0012345, Indiana)</button>
         </div>
-
         <div style={{display:"flex",gap:10,marginTop:36,flexWrap:"wrap",justifyContent:"center"}}>
           {[["📄","Works with any EPA permit format"],["🤖","AI handles complex layouts"],
             ["⚡","Results in under 5 seconds"],["🔒","Your data never leaves your server"]].map(([icon,label])=>(
@@ -440,7 +433,6 @@ function UploadStage({ onFile }) {
 }
 
 // ─── LOADING STAGE ────────────────────────────────────────────────────────────
-// Pure visual — parent controls when to leave this stage
 function LoadingStage({ fileName }) {
   const steps = [
     "Uploading permit to parser…",
@@ -450,14 +442,12 @@ function LoadingStage({ fileName }) {
     "Compiling compliance summary…",
   ];
   const [current, setCurrent] = useState(0);
-
   useEffect(() => {
     const id = setInterval(()=>{
       setCurrent(c => Math.min(c+1, steps.length-1));
     }, 440);
     return () => clearInterval(id);
   }, []);
-
   return (
     <div style={{
       minHeight:"100vh", background:T.bg,
@@ -505,8 +495,31 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
   const exceedances = rows.filter(r => r.status==="exceed");
   const pending     = rows.filter(r => r.status==="pending");
   const compRate    = rows.length
-    ? Math.round(((rows.length-exceedances.length)/rows.length)*100)
-    : 100;
+    ? Math.round(((rows.length-exceedances.length)/rows.length)*100) : 100;
+
+  // ── mobile detection for scroll arrows ──
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.innerWidth < 760
+  );
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 760);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+
+  const tableScrollRef = useRef(null);
+  const scrollTable = (dir) => {
+    tableScrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
+  };
+
+  // ── scroll arrow button style (for header bar) ──
+  const scrollBtnStyle = {
+    width:28, height:28, borderRadius:6,
+    background:"#f1f5f9", border:`1px solid ${T.border}`,
+    color:T.text, fontSize:18, cursor:"pointer",
+    display:"flex", alignItems:"center", justifyContent:"center",
+    fontFamily:"inherit", lineHeight:1, padding:0, flexShrink:0,
+  };
 
   const handleExportPDF = () => {
     const style = document.createElement("style");
@@ -521,27 +534,20 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
       }
     `;
     document.head.appendChild(style);
-
-    // Hide fixed-position elements (Netlify badge is always position:fixed)
-    // Only check LEAF-level elements to avoid hiding the whole page
     const hiddenEls = [];
     document.querySelectorAll("*").forEach(el => {
       const computed = window.getComputedStyle(el);
       const isFixed  = computed.position === "fixed";
       const isNotNav = !el.closest("nav");
-      // Only hide small elements with netlify text, NOT parent containers
       const isNetlifyLeaf = el.children.length <= 1 &&
                             el.textContent.trim().toLowerCase().includes("netlify");
-
       if ((isFixed && isNotNav) || isNetlifyLeaf) {
         el.setAttribute("data-cg-prev", el.style.display || "");
         el.style.setProperty("display", "none", "important");
         hiddenEls.push(el);
       }
     });
-
     window.print();
-
     setTimeout(() => {
       document.getElementById("cg-print-styles")?.remove();
       hiddenEls.forEach(el => {
@@ -551,27 +557,12 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     }, 1000);
   };
 
-  const tableScrollRef = useRef(null);
-  const scrollTable = (dir) => {
-    tableScrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
-  };
-  const arrowStyle = (side) => ({
-    position:"absolute", [side]:-14, top:"50%",
-    transform:"translateY(-50%)", zIndex:10,
-    width:28, height:28, borderRadius:"50%",
-    background:"white", border:`1px solid ${T.border}`,
-    color:T.text, fontSize:18, cursor:"pointer",
-    display:"flex", alignItems:"center", justifyContent:"center",
-    boxShadow:"0 2px 6px rgba(0,0,0,0.10)",
-    fontFamily:"inherit", lineHeight:1, padding:0,
-  });
-
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Nav onReset={onReset} onExport={handleExportPDF}/>
       <div style={{maxWidth:1080,margin:"0 auto",padding:"28px 20px 48px"}}>
 
-        {/* API status banner */}
+        {/* Status banner */}
         {isLiveData ? (
           <div className="cg-no-print" style={{
             background:"#ecfdf5",border:`1px solid #6ee7b7`,borderRadius:8,
@@ -580,25 +571,19 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
           }}>
             ✓ Live data — extracted from {fileName} via Railway API
             {pending.length>0 && (
-              <span style={{fontWeight:400,color:T.muted}}>
-                · Upload DMR to detect exceedances
-              </span>
+              <span style={{fontWeight:400,color:T.muted}}>· Upload DMR to detect exceedances</span>
             )}
           </div>
         ) : apiError ? (
           <div className="cg-no-print" style={{
             background:"#fff8f8",border:`1px solid #fca5a5`,borderRadius:8,
             padding:"10px 16px",marginBottom:20,fontSize:13,color:T.danger,fontWeight:600,
-          }}>
-            ⚠ API unreachable ({apiError}) — showing demo data
-          </div>
+          }}>⚠ API unreachable ({apiError}) — showing demo data</div>
         ) : (
           <div className="cg-no-print" style={{
             background:"#fffbeb",border:`1px solid #fde68a`,borderRadius:8,
             padding:"10px 16px",marginBottom:20,fontSize:13,color:T.warn,fontWeight:600,
-          }}>
-            ⚡ Demo mode — mock data for Permit IN0012345
-          </div>
+          }}>⚡ Demo mode — mock data for Permit IN0012345</div>
         )}
 
         {/* Facility header */}
@@ -630,11 +615,11 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
 
         {/* Metric cards */}
         <div style={{display:"flex",gap:14,marginBottom:20,flexWrap:"wrap"}}>
-          <MetricCard label="Parameters Found"      value={rows.length}              sub="Extracted from permit" />
-          <MetricCard label="Exceedances"           value={exceedances.length}
+          <MetricCard label="Parameters Found" value={rows.length} sub="Extracted from permit" />
+          <MetricCard label="Exceedances" value={exceedances.length}
             sub={exceedances.length?"Require immediate action":"None detected"}
             valueColor={exceedances.length?T.danger:T.success} />
-          <MetricCard label="Compliance Rate"       value={`${compRate}%`}
+          <MetricCard label="Compliance Rate" value={`${compRate}%`}
             sub="EPA threshold: 100%"
             valueColor={compRate<100?T.warn:T.success} />
           <MetricCard label="DMR Status"
@@ -645,14 +630,21 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
 
         {/* Data table */}
         <div style={{
-          background:T.surface,border:`1px solid ${T.border}`,
-          borderRadius:12,overflow:"hidden",
+          background:T.surface, border:`1px solid ${T.border}`,
+          borderRadius:12,
+          // FIX: removed overflow:hidden — it was clipping the scroll arrows
+          overflow:"visible",
         }}>
+
+          {/* Table header bar — scroll arrows live HERE (never clipped) */}
           <div style={{
-            padding:"18px 22px",borderBottom:`1px solid ${T.border}`,
-            display:"flex",justifyContent:"space-between",
-            alignItems:"center",flexWrap:"wrap",gap:10,
+            padding:"18px 22px", borderBottom:`1px solid ${T.border}`,
+            display:"flex", justifyContent:"space-between",
+            alignItems:"center", flexWrap:"wrap", gap:10,
+            borderRadius:"12px 12px 0 0",
+            background:T.surface,
           }}>
+            {/* Left: title + pills */}
             <div>
               <div style={{fontWeight:800,fontSize:15,color:T.text}}>
                 Effluent Limitations Analysis
@@ -661,21 +653,30 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
                 Permit {facility.permitNo} · {facility.period}
               </div>
             </div>
-            <div style={{display:"flex",gap:8}}>
+            {/* Right: status pills + scroll arrows (on mobile) */}
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               {exceedances.length>0 && <Pill label={`${exceedances.length} Exceedances`} color={T.danger}/>}
-              {pending.length>0     && <span className="cg-no-print"><Pill label={`${pending.length} Awaiting DMR`}   color={T.muted}/></span>}
+              {pending.length>0 && (
+                <span className="cg-no-print">
+                  <Pill label={`${pending.length} Awaiting DMR`} color={T.muted}/>
+                </span>
+              )}
               {rows.filter(r=>r.status==="pass").length>0 &&
-                <Pill label={`${rows.filter(r=>r.status==="pass").length} Compliant`}   color={T.success}/>}
+                <Pill label={`${rows.filter(r=>r.status==="pass").length} Compliant`} color={T.success}/>}
+
+              {/* FIX: стрелки переехали в шапку — здесь не режутся overflow */}
+              {isMobile && (
+                <div className="cg-no-print" style={{display:"flex",gap:4,marginLeft:4}}>
+                  <button onClick={()=>scrollTable(-1)} style={scrollBtnStyle} title="Scroll left">‹</button>
+                  <button onClick={()=>scrollTable(1)}  style={scrollBtnStyle} title="Scroll right">›</button>
+                </div>
+              )}
             </div>
           </div>
 
-          <div style={{position:"relative", padding:"0 16px"}}>
-            {/* Left scroll arrow */}
-            <button onClick={()=>scrollTable(-1)} style={arrowStyle("left")}>‹</button>
-
-            {/* Scrollable table */}
-            <div ref={tableScrollRef} style={{overflowX:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13, minWidth:700}}>
+          {/* Scrollable table — без лишнего padding по бокам */}
+          <div ref={tableScrollRef} style={{overflowX:"auto", borderRadius:"0 0 12px 12px"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:700}}>
               <thead>
                 <tr style={{background:"#f8fafc"}}>
                   {["Parameter","Full Name","Limit Type","Permit Limit","Measured","Deviation","Freq","Sample","Status"].map(h=>(
@@ -720,24 +721,18 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
                 })}
               </tbody>
             </table>
-            </div>{/* end scrollable */}
-
-            {/* Right scroll arrow */}
-            <button onClick={()=>scrollTable(1)} style={arrowStyle("right")}>›</button>
-          </div>{/* end relative container */}
+          </div>
 
           <div style={{
             padding:"13px 22px",borderTop:`1px solid ${T.border}`,
             fontSize:11,color:T.subtle,
             display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6,
           }}>
-            <span>
-              {isLiveData?"Live API":"Mock data"} · {fileName||"demo permit"}
-              &nbsp;·&nbsp;40 CFR Part 122
-            </span>
+            <span>{isLiveData?"Live API":"Mock data"} · {fileName||"demo permit"} · 40 CFR Part 122</span>
             <span>Analyzed: {new Date().toLocaleString("en-US")}</span>
           </div>
         </div>
+
       </div>
     </div>
   );
@@ -745,90 +740,60 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
 
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [stage,       setStage      ] = useState("upload");
-  const [fileName,    setFileName   ] = useState("");
-  const [rows,        setRows       ] = useState(MOCK_ROWS);
-  const [facility,    setFacility   ] = useState(MOCK_FACILITY);
-  const [isLiveData,  setIsLiveData ] = useState(false);
-  const [apiError,    setApiError   ] = useState(null);
+  const [stage,      setStage     ] = useState("upload");
+  const [fileName,   setFileName  ] = useState("");
+  const [rows,       setRows      ] = useState(MOCK_ROWS);
+  const [facility,   setFacility  ] = useState(MOCK_FACILITY);
+  const [isLiveData, setIsLiveData] = useState(false);
+  const [apiError,   setApiError  ] = useState(null);
 
   const processFile = async (file) => {
     if (file) setFileName(file.name);
     setStage("loading");
-
-    // Minimum loading display time (looks professional, syncs with animation)
     const minDelay = new Promise(r => setTimeout(r, 2_400));
-
     if (!file) {
-      // Demo mode — no API call needed
       await minDelay;
-      setRows(MOCK_ROWS);
-      setFacility(MOCK_FACILITY);
-      setIsLiveData(false);
-      setApiError(null);
-      setStage("results");
-      return;
+      setRows(MOCK_ROWS); setFacility(MOCK_FACILITY);
+      setIsLiveData(false); setApiError(null);
+      setStage("results"); return;
     }
-
-    // Real file — POST to Railway backend
     try {
       const formData = new FormData();
-      formData.append("file", file);   // ← field name must match FastAPI param
-
+      formData.append("file", file);
       const [apiRes] = await Promise.all([
-        fetch(`${API_BASE}/api/parse-permit`, {
-          method: "POST",
-          body:   formData,
-          // Note: DO NOT set Content-Type manually — browser auto-sets boundary
-        }),
-        minDelay,   // run both in parallel; wait for the slower one
+        fetch(`${API_BASE}/api/parse-permit`, { method:"POST", body:formData }),
+        minDelay,
       ]);
-
       if (!apiRes.ok) {
         const errText = await apiRes.text().catch(()=>"");
         throw new Error(`${apiRes.status} ${apiRes.statusText}: ${errText.slice(0,120)}`);
       }
-
       const data   = await apiRes.json();
       const mapped = mapApiResponse(data);
-
-      // If API returned 0 parameters (edge case), fall back to demo data
       if (!mapped.rows.length) throw new Error("API returned 0 parameters");
-
       setRows(mapped.rows);
       setFacility(mapped.facility.name!=="—" ? mapped.facility : {...MOCK_FACILITY,...mapped.facility});
-      setIsLiveData(true);
-      setApiError(null);
-
+      setIsLiveData(true); setApiError(null);
     } catch (err) {
-      console.error("[ClearGuard] API error — falling back to mock data:", err);
-      await minDelay;                 // ensure we waited at least the min
-      setRows(MOCK_ROWS);
-      setFacility(MOCK_FACILITY);
-      setIsLiveData(false);
-      setApiError(err.message);
+      console.error("[ClearGuard] API error:", err);
+      await minDelay;
+      setRows(MOCK_ROWS); setFacility(MOCK_FACILITY);
+      setIsLiveData(false); setApiError(err.message);
     }
-
     setStage("results");
   };
 
   const handleReset = () => {
-    setStage("upload");
-    setFileName("");
-    setIsLiveData(false);
-    setApiError(null);
+    setStage("upload"); setFileName("");
+    setIsLiveData(false); setApiError(null);
   };
 
   if (stage==="upload")  return <UploadStage  onFile={processFile}/>;
   if (stage==="loading") return <LoadingStage fileName={fileName}/>;
   return (
     <ResultsStage
-      fileName={fileName}
-      rows={rows}
-      facility={facility}
-      isLiveData={isLiveData}
-      apiError={apiError}
-      onReset={handleReset}
+      fileName={fileName} rows={rows} facility={facility}
+      isLiveData={isLiveData} apiError={apiError} onReset={handleReset}
     />
   );
 }
