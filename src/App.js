@@ -313,9 +313,12 @@ function Nav({ onReset, onExport }) {
             <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
           </g>
         </svg>
-        <span style={{ fontWeight:800, fontSize: isMobile ? 13 : 15, color:T.text }}>
-          ClearGuard
-        </span>
+        {/* Текст скрыт на мобильном — освобождает ~80px для аватара */}
+        {!isMobile && (
+          <span style={{ fontWeight:800, fontSize:15, color:T.text }}>
+            ClearGuard
+          </span>
+        )}
       </div>
 
       {/* ── Action buttons ── */}
@@ -360,9 +363,8 @@ function Nav({ onReset, onExport }) {
           ↓ Export PDF
         </button>
 
-        {/* ── Avatar с дропдауном (скрыт на мобильном) ── */}
-        {!isMobile && (
-          <div ref={menuRef} style={{ position:"relative", flexShrink:0 }}>
+        {/* ── Avatar с дропдауном (виден всегда) ── */}
+        <div ref={menuRef} style={{ position:"relative", flexShrink:0 }}>
             {/* Кнопка-аватар */}
             <button
               onClick={() => setMenuOpen(o => !o)}
@@ -433,7 +435,7 @@ function Nav({ onReset, onExport }) {
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </nav>
   );
