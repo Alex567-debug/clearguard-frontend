@@ -3,6 +3,16 @@
  * ========================================
  * Connects to:  https://saas-npdes-backend-production.up.railway.app
  * Endpoint:     POST /api/parse-permit  (multipart/form-data, field: "file")
+ *
+ * Mobile fixes applied:
+ *  • Touch targets ≥ 44px on all interactive elements
+ *  • Nav action buttons: minHeight 44px
+ *  • Avatar button: 44×44px
+ *  • Scroll arrows: 44×44px
+ *  • Demo permit button: minHeight 44px
+ *  • Table: hides secondary columns (Full Name, Limit Type, Freq, Sample)
+ *    on mobile (<760px) → fits in ~500px, minimal horizontal scroll
+ *  • Facility permit details: 2-column wrap on small screens
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -174,7 +184,6 @@ function Nav({ onReset, onExport }) {
     return () => window.removeEventListener("resize", h);
   }, []);
 
-  // Закрываем дропдаун при клике вне него
   useEffect(() => {
     if (!menuOpen) return;
     const handler = (e) => {
@@ -197,16 +206,30 @@ function Nav({ onReset, onExport }) {
     { icon:"🚪", label:"Sign Out",         sub:"",                    disabled:true  },
   ];
 
+  // FIX: all touch targets ≥ 44px
+  const BTN_H = 44;
+
+  // Scroll arrow style — 44×44px touch target
+  const scrollBtnStyle = {
+    width: BTN_H, height: BTN_H, minWidth: BTN_H,
+    borderRadius: 8,
+    background: "#f1f5f9", border: `1px solid ${T.border}`,
+    color: T.text, fontSize: 20, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: "inherit", lineHeight: 1, padding: 0, flexShrink: 0,
+  };
+
   return (
     <nav style={{
-      background:T.surface,
-      borderBottom:`1px solid ${T.border}`,
-      minHeight:52,
-      display:"flex", alignItems:"center",
-      justifyContent:"space-between",
-      padding: isMobile ? "8px 12px" : "0 28px",
-      position:"sticky", top:0, zIndex:100,
+      background: T.surface,
+      borderBottom: `1px solid ${T.border}`,
+      minHeight: 56,
+      display: "flex", alignItems: "center",
+      justifyContent: "space-between",
+      padding: isMobile ? "0 12px" : "0 28px",
+      position: "sticky", top: 0, zIndex: 100,
       gap: 8,
+      boxSizing: "border-box",
     }}>
 
       {/* ── Logo + brand ── */}
@@ -313,7 +336,7 @@ function Nav({ onReset, onExport }) {
             <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
           </g>
         </svg>
-        <span style={{ fontWeight:800, fontSize: isMobile ? 11 : 15, color:T.text, letterSpacing: isMobile ? 0 : undefined }}>
+        <span style={{ fontWeight:800, fontSize: isMobile ? 13 : 15, color:T.text }}>
           ClearGuard
         </span>
       </div>
@@ -325,113 +348,132 @@ function Nav({ onReset, onExport }) {
             onClick={onReset}
             className="cg-no-print"
             style={{
-              fontSize:     isMobile ? 10 : 12,
+              // FIX: min-height 44px touch target
+              minHeight: BTN_H,
+              fontSize:     isMobile ? 12 : 13,
               color:        T.muted,
               background:   "none",
               border:       `1px solid ${T.border}`,
-              padding:      isMobile ? "5px 9px" : "5px 12px",
-              borderRadius: 6,
+              padding:      isMobile ? "0 10px" : "0 14px",
+              borderRadius: 8,
               cursor:       "pointer",
               fontFamily:   "inherit",
               fontWeight:   600,
               whiteSpace:   "nowrap",
+              display:      "flex",
+              alignItems:   "center",
+              boxSizing:    "border-box",
             }}
           >
-            {/* FIX: "↑ Upload" on mobile — понятно, что это кнопка возврата */}
             {isMobile ? "↑ Upload" : "↑ New upload"}
           </button>
         )}
         <button
           onClick={onExport}
           style={{
-            fontSize:     isMobile ? 10 : 12,
-            fontWeight:   700,
-            background:   T.accent,
-            color:        "#fff",
-            border:       "none",
-            padding:      isMobile ? "5px 9px" : "6px 14px",
-            borderRadius: 6,
-            cursor:       "pointer",
-            fontFamily:   "inherit",
-            whiteSpace:   "nowrap",
+            // FIX: min-height 44px touch target
+            minHeight:  BTN_H,
+            fontSize:   isMobile ? 12 : 13,
+            fontWeight: 700,
+            background: T.accent,
+            color:      "#fff",
+            border:     "none",
+            padding:    isMobile ? "0 10px" : "0 16px",
+            borderRadius: 8,
+            cursor:     "pointer",
+            fontFamily: "inherit",
+            whiteSpace: "nowrap",
+            display:    "flex",
+            alignItems: "center",
+            boxSizing:  "border-box",
           }}
         >
-          {/* FIX: всегда полный текст "↓ Export PDF" */}
           ↓ Export PDF
         </button>
 
-        {/* ── Avatar с дропдауном (виден всегда) ── */}
+        {/* ── Avatar с дропдауном ── */}
         <div ref={menuRef} style={{ position:"relative", flexShrink:0 }}>
-            {/* Кнопка-аватар */}
-            <button
-              onClick={() => setMenuOpen(o => !o)}
-              className="cg-no-print"
-              title="Account menu"
-              style={{
-                width:30, height:30, borderRadius:"50%",
-                background: menuOpen ? "#cbd5e1" : "#e2e8f0",
-                border: menuOpen ? `2px solid ${T.accent}` : "2px solid transparent",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                cursor:"pointer", flexShrink:0, padding:0,
-                transition:"border-color 0.15s, background 0.15s",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
-                <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
-                      stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </button>
+          {/* FIX: avatar button 44×44px touch target */}
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            className="cg-no-print"
+            title="Account menu"
+            style={{
+              width: BTN_H, height: BTN_H,
+              borderRadius: "50%",
+              background: menuOpen ? "#cbd5e1" : "#e2e8f0",
+              border: menuOpen ? `2px solid ${T.accent}` : "2px solid transparent",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", flexShrink: 0, padding: 0,
+              transition: "border-color 0.15s, background 0.15s",
+              boxSizing: "border-box",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
+              <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
+                    stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
 
-            {/* Дропдаун */}
-            {menuOpen && (
-              <div style={{
-                position:"absolute", top:"calc(100% + 8px)", right:0,
-                width:230, background:T.surface,
-                border:`1px solid ${T.border}`, borderRadius:10,
-                boxShadow:"0 8px 24px rgba(0,0,0,0.10)",
-                zIndex:200, overflow:"hidden",
-              }}>
-                {menuItems.map((item, i) => {
-                  if (item.divider) return (
-                    <div key={i} style={{ height:1, background:T.border, margin:"4px 0" }}/>
-                  );
-                  return (
-                    <button
-                      key={i}
-                      disabled={item.disabled}
-                      onClick={() => {
-                        if (item.action === "help") {
-                          window.open("https://www.epa.gov/npdes","_blank");
-                        }
-                        if (item.action === "trust") {
-                          alert("ClearGuard Zero Data Retention Policy:\n\n• Files deleted immediately after parsing\n• TLS 1.3 in transit\n• AES-256 at rest\n• No AI training on your data");
-                        }
-                        setMenuOpen(false);
-                      }}
-                      style={{
-                        display:"flex", alignItems:"center", gap:10,
-                        width:"100%", padding:"10px 14px",
-                        background:"none", border:"none",
-                        cursor: item.disabled ? "default" : "pointer",
-                        textAlign:"left", fontFamily:"inherit",
-                        opacity: item.disabled ? 0.45 : 1,
-                        transition:"background 0.1s",
-                      }}
-                      onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "#f8fafc"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
-                    >
-                      <span style={{ fontSize:15 }}>{item.icon}</span>
-                      <div>
-                        <div style={{ fontSize:12, fontWeight:600, color:T.text }}>{item.label}</div>
-                        {item.sub && <div style={{ fontSize:10, color:T.subtle, marginTop:1 }}>{item.sub}</div>}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Дропдаун */}
+          {menuOpen && (
+            <div style={{
+              position: "absolute",
+              top: "calc(100% + 8px)",
+              right: 0,
+              width: 230,
+              background: T.surface,
+              border: `1px solid ${T.border}`,
+              borderRadius: 10,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+              zIndex: 200,
+              overflow: "hidden",
+            }}>
+              {menuItems.map((item, i) => {
+                if (item.divider) return (
+                  <div key={i} style={{ height:1, background:T.border, margin:"4px 0" }}/>
+                );
+                return (
+                  <button
+                    key={i}
+                    disabled={item.disabled}
+                    onClick={() => {
+                      if (item.action === "help") {
+                        window.open("https://www.epa.gov/npdes","_blank");
+                      }
+                      if (item.action === "trust") {
+                        alert("ClearGuard Zero Data Retention Policy:\n\n• Files deleted immediately after parsing\n• TLS 1.3 in transit\n• AES-256 at rest\n• No AI training on your data");
+                      }
+                      setMenuOpen(false);
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%",
+                      // FIX: dropdown items also 44px touch targets
+                      minHeight: BTN_H,
+                      padding: "0 14px",
+                      background: "none", border: "none",
+                      cursor: item.disabled ? "default" : "pointer",
+                      textAlign: "left", fontFamily: "inherit",
+                      opacity: item.disabled ? 0.45 : 1,
+                      transition: "background 0.1s",
+                      boxSizing: "border-box",
+                    }}
+                    onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "#f8fafc"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+                  >
+                    <span style={{ fontSize:15 }}>{item.icon}</span>
+                    <div>
+                      <div style={{ fontSize:12, fontWeight:600, color:T.text }}>{item.label}</div>
+                      {item.sub && <div style={{ fontSize:10, color:T.subtle, marginTop:1 }}>{item.sub}</div>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </nav>
   );
@@ -486,19 +528,28 @@ function UploadStage({ onFile }) {
           <div style={{fontSize:13,color:T.subtle,marginBottom:18}}>
             EPA-issued NPDES permits, DMRs, and fact sheets
           </div>
+          {/* FIX: "Select PDF file" — the whole drop zone is clickable,
+              the span is a visual affordance only, no separate touch target needed */}
           <span style={{
             display:"inline-block", fontSize:13, fontWeight:600,
             color:T.accent, background:"#eff6ff",
-            padding:"8px 20px", borderRadius:7, border:`1px solid #bfdbfe`,
+            padding:"10px 20px", borderRadius:7, border:`1px solid #bfdbfe`,
+            minHeight: 44, lineHeight: "24px", boxSizing: "border-box",
           }}>Select PDF file</span>
         </div>
+
+        {/* FIX: demo link — min-height 44px touch target */}
         <div style={{textAlign:"center",marginTop:16}}>
           <button onClick={()=>onFile(null)} style={{
+            minHeight: 44,
             fontSize:13, color:T.accent, background:"none",
             border:"none", cursor:"pointer", fontFamily:"inherit",
             textDecoration:"underline",
+            display:"inline-flex", alignItems:"center", justifyContent:"center",
+            padding:"0 8px",
           }}>→ Load demo permit (IN0012345, Indiana)</button>
         </div>
+
         <div style={{display:"flex",gap:10,marginTop:36,flexWrap:"wrap",justifyContent:"center"}}>
           {[["📄","Works with any EPA permit format"],["🤖","AI handles complex layouts"],
             ["⚡","Results in under 5 seconds"],["🔒","Your data never leaves your server"]].map(([icon,label])=>(
@@ -579,7 +630,6 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
   const compRate    = rows.length
     ? Math.round(((rows.length-exceedances.length)/rows.length)*100) : 100;
 
-  // ── mobile detection for scroll arrows ──
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" && window.innerWidth < 760
   );
@@ -594,14 +644,33 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     tableScrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
   };
 
-  // ── scroll arrow button style (for header bar) ──
+  // FIX: scroll arrows 44×44px
   const scrollBtnStyle = {
-    width:28, height:28, borderRadius:6,
-    background:"#f1f5f9", border:`1px solid ${T.border}`,
-    color:T.text, fontSize:18, cursor:"pointer",
-    display:"flex", alignItems:"center", justifyContent:"center",
-    fontFamily:"inherit", lineHeight:1, padding:0, flexShrink:0,
+    width: 44, height: 44, minWidth: 44,
+    borderRadius: 8,
+    background: "#f1f5f9", border: `1px solid ${T.border}`,
+    color: T.text, fontSize: 20, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontFamily: "inherit", lineHeight: 1, padding: 0, flexShrink: 0,
+    boxSizing: "border-box",
   };
+
+  // FIX: table columns — on mobile hide secondary columns to reduce scroll width
+  // Desktop: all 9 columns | Mobile: 5 essential columns
+  const allColumns = [
+    { key:"param",     label:"Parameter",    mobileShow: true  },
+    { key:"fullName",  label:"Full Name",    mobileShow: false }, // hidden on mobile
+    { key:"limitType", label:"Limit Type",   mobileShow: false }, // hidden on mobile
+    { key:"limitStr",  label:"Permit Limit", mobileShow: true  },
+    { key:"measured",  label:"Measured",     mobileShow: true  },
+    { key:"deviation", label:"Deviation",    mobileShow: true  },
+    { key:"freq",      label:"Freq",         mobileShow: false }, // hidden on mobile
+    { key:"sample",    label:"Sample",       mobileShow: false }, // hidden on mobile
+    { key:"status",    label:"Status",       mobileShow: true  },
+  ];
+  const visibleCols = isMobile
+    ? allColumns.filter(c => c.mobileShow)
+    : allColumns;
 
   const handleExportPDF = () => {
     const style = document.createElement("style");
@@ -674,15 +743,20 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
           borderRadius:12,padding:"22px 24px",marginBottom:20,
         }}>
           <div style={{
-            display:"flex",flexWrap:"wrap",
-            justifyContent:"space-between",alignItems:"flex-start",gap:16,
+            display:"flex", flexWrap:"wrap",
+            justifyContent:"space-between", alignItems:"flex-start", gap:16,
           }}>
             <div>
               <div style={{fontSize:11,color:T.subtle,fontWeight:600,marginBottom:4}}>FACILITY</div>
               <div style={{fontSize:20,fontWeight:800,color:T.text}}>{facility.name}</div>
               <div style={{fontSize:13,color:T.muted,marginTop:3}}>{facility.authority}</div>
             </div>
-            <div style={{display:"flex",gap:28,flexWrap:"wrap"}}>
+            {/* FIX: permit detail chips — 2-column grid on mobile */}
+            <div style={{
+              display:"grid",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)",
+              gap: isMobile ? "12px 24px" : "0 28px",
+            }}>
               {[["Permit No.",facility.permitNo],["Outfall",facility.outfall],
                 ["Period",facility.period],["Expires",facility.expires]
               ].map(([lbl,val])=>(
@@ -714,19 +788,18 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
         <div style={{
           background:T.surface, border:`1px solid ${T.border}`,
           borderRadius:12,
-          // FIX: removed overflow:hidden — it was clipping the scroll arrows
           overflow:"visible",
         }}>
 
-          {/* Table header bar — scroll arrows live HERE (never clipped) */}
+          {/* Table header bar */}
           <div style={{
-            padding:"18px 22px", borderBottom:`1px solid ${T.border}`,
+            padding: isMobile ? "14px 16px" : "18px 22px",
+            borderBottom:`1px solid ${T.border}`,
             display:"flex", justifyContent:"space-between",
             alignItems:"center", flexWrap:"wrap", gap:10,
             borderRadius:"12px 12px 0 0",
             background:T.surface,
           }}>
-            {/* Left: title + pills */}
             <div>
               <div style={{fontWeight:800,fontSize:15,color:T.text}}>
                 Effluent Limitations Analysis
@@ -735,7 +808,6 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
                 Permit {facility.permitNo} · {facility.period}
               </div>
             </div>
-            {/* Right: status pills + scroll arrows (on mobile) */}
             <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
               {exceedances.length>0 && <Pill label={`${exceedances.length} Exceedances`} color={T.danger}/>}
               {pending.length>0 && (
@@ -746,7 +818,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
               {rows.filter(r=>r.status==="pass").length>0 &&
                 <Pill label={`${rows.filter(r=>r.status==="pass").length} Compliant`} color={T.success}/>}
 
-              {/* FIX: стрелки переехали в шапку — здесь не режутся overflow */}
+              {/* FIX: scroll arrows 44×44px, always show on mobile */}
               {isMobile && (
                 <div className="cg-no-print" style={{display:"flex",gap:4,marginLeft:4}}>
                   <button onClick={()=>scrollTable(-1)} style={scrollBtnStyle} title="Scroll left">‹</button>
@@ -756,17 +828,22 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
             </div>
           </div>
 
-          {/* Scrollable table — без лишнего padding по бокам */}
+          {/* Scrollable table — FIX: min-width reduced on mobile because fewer columns */}
           <div ref={tableScrollRef} style={{overflowX:"auto", borderRadius:"0 0 12px 12px"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:700}}>
+            <table style={{
+              width:"100%", borderCollapse:"collapse", fontSize:13,
+              // FIX: narrower min-width on mobile (5 columns vs 9)
+              minWidth: isMobile ? 480 : 700,
+            }}>
               <thead>
                 <tr style={{background:"#f8fafc"}}>
-                  {["Parameter","Full Name","Limit Type","Permit Limit","Measured","Deviation","Freq","Sample","Status"].map(h=>(
-                    <th key={h} style={{
-                      padding:"11px 14px",textAlign:"left",fontSize:11,
-                      fontWeight:700,color:T.muted,
-                      borderBottom:`1px solid ${T.border}`,whiteSpace:"nowrap",
-                    }}>{h}</th>
+                  {visibleCols.map(col => (
+                    <th key={col.key} style={{
+                      padding: isMobile ? "11px 12px" : "11px 14px",
+                      textAlign:"left", fontSize:11,
+                      fontWeight:700, color:T.muted,
+                      borderBottom:`1px solid ${T.border}`, whiteSpace:"nowrap",
+                    }}>{col.label}</th>
                   ))}
                 </tr>
               </thead>
@@ -780,24 +857,38 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
                       backgroundColor:exceed?T.rowDgr:pend?T.rowPnd:i%2===0?T.surface:T.rowAlt,
                       borderLeft:`3px solid ${exceed?T.danger:pend?T.border:"transparent"}`,
                     }}>
-                      <td style={{padding:"13px 14px",fontWeight:800,color:T.text,whiteSpace:"nowrap"}}>{row.param}</td>
-                      <td style={{padding:"13px 14px",color:T.muted,maxWidth:200}}>{row.fullName}</td>
-                      <td style={{padding:"13px 14px",color:T.muted,whiteSpace:"nowrap"}}>{row.limitType}</td>
-                      <td style={{padding:"13px 14px",fontWeight:600,color:T.text,whiteSpace:"nowrap"}}>{row.limitStr}</td>
-                      <td style={{
-                        padding:"13px 14px",fontWeight:800,whiteSpace:"nowrap",
-                        color:exceed?T.danger:pend?T.subtle:T.text,
-                      }}>
-                        {row.measured!==null?`${row.measured} ${row.unit}`:"—"}
-                      </td>
-                      <td style={{padding:"13px 14px",whiteSpace:"nowrap"}}>
-                        {dev
-                          ? <span style={{fontWeight:700,fontSize:13,color:dev.over?T.danger:T.success}}>{dev.str}</span>
-                          : <span style={{color:T.subtle}}>—</span>}
-                      </td>
-                      <td style={{padding:"13px 14px",color:T.muted,whiteSpace:"nowrap"}}>{row.freq}</td>
-                      <td style={{padding:"13px 14px",color:T.muted,whiteSpace:"nowrap"}}>{row.sample}</td>
-                      <td style={{padding:"13px 14px"}}><StatusBadge status={row.status}/></td>
+                      {visibleCols.map(col => {
+                        const p = isMobile ? "11px 12px" : "13px 14px";
+                        switch(col.key) {
+                          case "param":
+                            return <td key="param" style={{padding:p,fontWeight:800,color:T.text,whiteSpace:"nowrap"}}>{row.param}</td>;
+                          case "fullName":
+                            return <td key="fullName" style={{padding:p,color:T.muted,maxWidth:200}}>{row.fullName}</td>;
+                          case "limitType":
+                            return <td key="limitType" style={{padding:p,color:T.muted,whiteSpace:"nowrap"}}>{row.limitType}</td>;
+                          case "limitStr":
+                            return <td key="limitStr" style={{padding:p,fontWeight:600,color:T.text,whiteSpace:"nowrap"}}>{row.limitStr}</td>;
+                          case "measured":
+                            return <td key="measured" style={{
+                              padding:p,fontWeight:800,whiteSpace:"nowrap",
+                              color:exceed?T.danger:pend?T.subtle:T.text,
+                            }}>{row.measured!==null?`${row.measured} ${row.unit}`:"—"}</td>;
+                          case "deviation":
+                            return <td key="deviation" style={{padding:p,whiteSpace:"nowrap"}}>
+                              {dev
+                                ? <span style={{fontWeight:700,fontSize:13,color:dev.over?T.danger:T.success}}>{dev.str}</span>
+                                : <span style={{color:T.subtle}}>—</span>}
+                            </td>;
+                          case "freq":
+                            return <td key="freq" style={{padding:p,color:T.muted,whiteSpace:"nowrap"}}>{row.freq}</td>;
+                          case "sample":
+                            return <td key="sample" style={{padding:p,color:T.muted,whiteSpace:"nowrap"}}>{row.sample}</td>;
+                          case "status":
+                            return <td key="status" style={{padding:p}}><StatusBadge status={row.status}/></td>;
+                          default:
+                            return null;
+                        }
+                      })}
                     </tr>
                   );
                 })}
