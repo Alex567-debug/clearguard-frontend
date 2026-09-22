@@ -1,17 +1,17 @@
 /**
  * ClearGuard — NPDES Compliance Dashboard
- * ========================================
+ * =========================================
  * Connects to:  https://saas-npdes-backend-production.up.railway.app
  * Endpoint:     POST /api/parse-permit  (multipart/form-data, field: "file")
  *
- * Mobile fixes applied:
+ * v3 — Enterprise Dark theme (#09090B bg / #14B8A6 teal)
+ * Mobile fixes:
  *  • Touch targets ≥ 44px on all interactive elements
  *  • Nav action buttons: minHeight 44px
  *  • Avatar button: 44×44px
  *  • Scroll arrows: 44×44px
  *  • Demo permit button: minHeight 44px
- *  • Table: hides secondary columns (Full Name, Limit Type, Freq, Sample)
- *    on mobile (<760px) → fits in ~500px, minimal horizontal scroll
+ *  • Table: hides secondary columns on mobile (<760px) → 5 essential cols
  *  • Facility permit details: 2-column wrap on small screens
  */
 
@@ -20,22 +20,22 @@ import { useState, useRef, useEffect } from "react";
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE = "https://saas-npdes-backend-production.up.railway.app";
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+// ─── DESIGN TOKENS — Enterprise Dark ──────────────────────────────────────────
 const T = {
-  bg:      "#f0f4f8",
-  surface: "#ffffff",
-  accent:  "#1a56db",
-  danger:  "#e02424",
-  success: "#057a55",
-  warn:    "#b45309",
-  pending: "#6b7280",
-  border:  "#dde3ed",
-  text:    "#111928",
-  muted:   "#6b7280",
-  subtle:  "#9ca3af",
-  rowAlt:  "#f9fafb",
-  rowDgr:  "#fff8f8",
-  rowPnd:  "#f8fafc",
+  bg:      "#09090B",   // near-black — matches landing page
+  surface: "#111318",   // dark card / nav surface
+  accent:  "#14B8A6",   // teal — matches landing page
+  danger:  "#F87171",   // red (brightened for dark bg legibility)
+  success: "#34D399",   // green (brightened for dark bg)
+  warn:    "#FBBF24",   // amber (brightened for dark bg)
+  pending: "#9CA3AF",
+  border:  "#1E2330",   // dark border
+  text:    "#F1F5F9",   // near-white body text
+  muted:   "#8B929F",   // secondary text
+  subtle:  "#374151",   // very muted / disabled
+  rowAlt:  "#0E1117",   // alternating table row
+  rowDgr:  "#1C0A0A",   // danger row tint
+  rowPnd:  "#0F1117",   // pending row tint
 };
 
 const PARAM_NAMES = {
@@ -133,11 +133,12 @@ function deviation(row) {
 
 // ─── MICRO-COMPONENTS ─────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
+  // DARK: badge bg/border tones tuned for dark surface
   const cfg = {
-    exceed:  { bg:"#fef2f2", color:T.danger,  border:"#fca5a5", text:"⚠  Exceedance"   },
-    pass:    { bg:"#ecfdf5", color:T.success, border:"#6ee7b7", text:"✓  Compliant"    },
-    pending: { bg:"#f8fafc", color:T.muted,   border:"#dde3ed", text:"↑  Awaiting DMR" },
-  }[status] || { bg:"#f8fafc", color:T.muted, border:T.border, text:status };
+    exceed:  { bg:"#2D0A0A",  color:T.danger,  border:"#7F1D1D", text:"⚠  Exceedance"   },
+    pass:    { bg:"#042D1E",  color:T.success, border:"#065F46", text:"✓  Compliant"    },
+    pending: { bg:"#111318",  color:T.muted,   border:T.border,  text:"↑  Awaiting DMR" },
+  }[status] || { bg:T.surface, color:T.muted, border:T.border, text:status };
   return (
     <span style={{
       backgroundColor:cfg.bg, color:cfg.color,
@@ -165,8 +166,135 @@ function Pill({ label, color }) {
   return (
     <span style={{
       fontSize:11, fontWeight:600, padding:"3px 9px", borderRadius:4,
-      backgroundColor:color+"18", color, border:`1px solid ${color}44`,
+      backgroundColor:color+"22", color, border:`1px solid ${color}55`,
     }}>{label}</span>
+  );
+}
+
+// ─── HEXA-PRISM LOGO SVG (dark-theme version) ────────────────────────────────
+// Structural wireframe uses white/light strokes at low opacity (was dark ink on light bg).
+// Teal gradient + neon glow circuits remain unchanged — they pop on dark bg.
+function HexaPrismLogo({ size = 44 }) {
+  const h = Math.round(size * (600 / 600)); // square viewBox
+  return (
+    <svg width={size} height={h} viewBox="0 0 600 600" fill="none">
+      <defs>
+        <linearGradient id="navDropGrad" x1="100%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   stopColor="#00FFA3"/>
+          <stop offset="100%" stopColor="#14B8A6"/>
+        </linearGradient>
+        <filter id="navNeonGlow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="14" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="navSoftGlow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <clipPath id="navShieldClip">
+          <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"/>
+        </clipPath>
+      </defs>
+
+      {/* Hex wireframe bg — subtle white lines inside shield */}
+      <g clipPath="url(#navShieldClip)" stroke="rgba(255,255,255,0.13)" strokeWidth="2.8" fill="none">
+        <line x1="300" y1="142" x2="190" y2="244"/>
+        <line x1="300" y1="142" x2="410" y2="244"/>
+        <line x1="78"  y1="98"  x2="190" y2="244"/>
+        <line x1="522" y1="98"  x2="410" y2="244"/>
+        <line x1="190" y1="244" x2="410" y2="244"/>
+        <line x1="78"  y1="218" x2="190" y2="244"/>
+        <line x1="522" y1="218" x2="410" y2="244"/>
+        <line x1="190" y1="244" x2="174" y2="374"/>
+        <line x1="410" y1="244" x2="426" y2="374"/>
+        <line x1="190" y1="244" x2="300" y2="318"/>
+        <line x1="410" y1="244" x2="300" y2="318"/>
+        <line x1="174" y1="374" x2="300" y2="318"/>
+        <line x1="426" y1="374" x2="300" y2="318"/>
+        <line x1="174" y1="374" x2="426" y2="374"/>
+        <line x1="78"  y1="338" x2="174" y2="374"/>
+        <line x1="522" y1="338" x2="426" y2="374"/>
+        <line x1="174" y1="374" x2="218" y2="474"/>
+        <line x1="426" y1="374" x2="382" y2="474"/>
+        <line x1="218" y1="474" x2="382" y2="474"/>
+        <line x1="300" y1="318" x2="300" y2="474"/>
+        <line x1="218" y1="474" x2="300" y2="562"/>
+        <line x1="382" y1="474" x2="300" y2="562"/>
+      </g>
+
+      {/* Hex wireframe inner nodes — small white dots */}
+      <g fill="rgba(255,255,255,0.22)" clipPath="url(#navShieldClip)">
+        <circle cx="300" cy="142" r="7"/><circle cx="190" cy="244" r="7"/>
+        <circle cx="410" cy="244" r="7"/><circle cx="78"  cy="218" r="7"/>
+        <circle cx="522" cy="218" r="7"/><circle cx="300" cy="318" r="7"/>
+        <circle cx="174" cy="374" r="7"/><circle cx="426" cy="374" r="7"/>
+        <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
+        <circle cx="300" cy="474" r="7"/><circle cx="300" cy="562" r="7"/>
+      </g>
+
+      {/* Water drop — dark teal fill with white outer ring */}
+      <path d="M300,172 C300,172 380,280 380,358 C380,405 344,444 300,444 C256,444 220,405 220,358 C220,280 300,172 300,172 Z"
+        stroke="rgba(255,255,255,0.18)" strokeWidth="14" fill="none" strokeLinejoin="round"/>
+      <path d="M300,178 C300,178 374,282 374,357 C374,401 341,438 300,438 C259,438 226,401 226,357 C226,282 300,178 300,178 Z"
+        fill="#051A18"/>
+
+      {/* Neon drop outline — teal glow */}
+      <path d="M300,195 C300,195 360,288 360,355 C360,394 333,424 300,424 C267,424 240,394 240,355 C240,288 300,195 300,195 Z"
+        stroke="url(#navDropGrad)" strokeWidth="5" fill="none"
+        filter="url(#navNeonGlow)" strokeLinejoin="round"/>
+
+      {/* Circuit traces — teal gradient */}
+      <path d="M300,240 V272 H256 L242,286 V318"
+        stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
+        strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
+      <path d="M300,272 H346 L360,286 V318 H326"
+        stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
+        strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
+      <path d="M300,350 V378 H268 L256,390 V412"
+        stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
+        strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
+      <path d="M300,378 H334 L346,390"
+        stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
+        strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
+
+      {/* Teal circuit nodes */}
+      <g fill="#14B8A6" filter="url(#navSoftGlow)">
+        <circle cx="300" cy="236" r="6.5"/><circle cx="242" cy="322" r="6"/>
+        <circle cx="326" cy="322" r="6"/>  <circle cx="300" cy="346" r="5"/>
+        <circle cx="256" cy="414" r="6"/>  <circle cx="350" cy="394" r="6"/>
+      </g>
+
+      {/* Shield inner border — subtle white */}
+      <path d="M108,118 L300,158 L492,118 L492,328 L300,532 L108,328 Z"
+        stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" fill="none"/>
+
+      {/* Shield outer border — more visible white */}
+      <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"
+        stroke="rgba(255,255,255,0.30)" strokeWidth="6" fill="none" strokeLinejoin="miter"/>
+
+      {/* Cross-lines inside shield — very subtle */}
+      <g stroke="rgba(255,255,255,0.07)" strokeWidth="1.8" fill="none" clipPath="url(#navShieldClip)">
+        <line x1="190" y1="244" x2="382" y2="474"/>
+        <line x1="410" y1="244" x2="218" y2="474"/>
+        <line x1="78"  y1="218" x2="426" y2="374"/>
+        <line x1="522" y1="218" x2="174" y2="374"/>
+        <line x1="300" y1="142" x2="300" y2="562"/>
+      </g>
+
+      {/* Shield vertex nodes — white dots */}
+      <g fill="rgba(255,255,255,0.45)">
+        <circle cx="78"  cy="98"  r="8"/><circle cx="300" cy="142" r="8"/>
+        <circle cx="522" cy="98"  r="8"/><circle cx="78"  cy="218" r="7"/>
+        <circle cx="522" cy="218" r="7"/><circle cx="78"  cy="338" r="8"/>
+        <circle cx="522" cy="338" r="8"/><circle cx="300" cy="562" r="8"/>
+        <circle cx="190" cy="244" r="7"/><circle cx="410" cy="244" r="7"/>
+        <circle cx="174" cy="374" r="7"/><circle cx="426" cy="374" r="7"/>
+        <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
+      </g>
+    </svg>
   );
 }
 
@@ -206,18 +334,7 @@ function Nav({ onReset, onExport }) {
     { icon:"🚪", label:"Sign Out",         sub:"",                    disabled:true  },
   ];
 
-  // FIX: all touch targets ≥ 44px
   const BTN_H = 44;
-
-  // Scroll arrow style — 44×44px touch target
-  const scrollBtnStyle = {
-    width: BTN_H, height: BTN_H, minWidth: BTN_H,
-    borderRadius: 8,
-    background: "#f1f5f9", border: `1px solid ${T.border}`,
-    color: T.text, fontSize: 20, cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontFamily: "inherit", lineHeight: 1, padding: 0, flexShrink: 0,
-  };
 
   return (
     <nav style={{
@@ -234,109 +351,8 @@ function Nav({ onReset, onExport }) {
 
       {/* ── Logo + brand ── */}
       <div style={{ display:"flex", alignItems:"center", gap: isMobile ? 6 : 10, flexShrink:0 }}>
-        <svg
-          width={isMobile ? 30 : 44}
-          height={isMobile ? 33 : 48}
-          viewBox="0 0 600 600" fill="none"
-        >
-          <defs>
-            <linearGradient id="navDropGrad" x1="100%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%"   stopColor="#00FFA3"/>
-              <stop offset="100%" stopColor="#00F2FE"/>
-            </linearGradient>
-            <filter id="navNeonGlow" x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="12" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-            <filter id="navSoftGlow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="5" result="b"/>
-              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <clipPath id="navShieldClip">
-              <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"/>
-            </clipPath>
-          </defs>
-          <g clipPath="url(#navShieldClip)" stroke="#0A1526" strokeWidth="2.8" fill="none" opacity="0.95">
-            <line x1="300" y1="142" x2="190" y2="244"/>
-            <line x1="300" y1="142" x2="410" y2="244"/>
-            <line x1="78"  y1="98"  x2="190" y2="244"/>
-            <line x1="522" y1="98"  x2="410" y2="244"/>
-            <line x1="190" y1="244" x2="410" y2="244"/>
-            <line x1="78"  y1="218" x2="190" y2="244"/>
-            <line x1="522" y1="218" x2="410" y2="244"/>
-            <line x1="190" y1="244" x2="174" y2="374"/>
-            <line x1="410" y1="244" x2="426" y2="374"/>
-            <line x1="190" y1="244" x2="300" y2="318"/>
-            <line x1="410" y1="244" x2="300" y2="318"/>
-            <line x1="174" y1="374" x2="300" y2="318"/>
-            <line x1="426" y1="374" x2="300" y2="318"/>
-            <line x1="174" y1="374" x2="426" y2="374"/>
-            <line x1="78"  y1="338" x2="174" y2="374"/>
-            <line x1="522" y1="338" x2="426" y2="374"/>
-            <line x1="174" y1="374" x2="218" y2="474"/>
-            <line x1="426" y1="374" x2="382" y2="474"/>
-            <line x1="218" y1="474" x2="382" y2="474"/>
-            <line x1="300" y1="318" x2="300" y2="474"/>
-            <line x1="218" y1="474" x2="300" y2="562"/>
-            <line x1="382" y1="474" x2="300" y2="562"/>
-          </g>
-          <g fill="#0A1526" clipPath="url(#navShieldClip)">
-            <circle cx="300" cy="142" r="7"/><circle cx="190" cy="244" r="7"/>
-            <circle cx="410" cy="244" r="7"/><circle cx="78"  cy="218" r="7"/>
-            <circle cx="522" cy="218" r="7"/><circle cx="300" cy="318" r="7"/>
-            <circle cx="174" cy="374" r="7"/><circle cx="426" cy="374" r="7"/>
-            <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
-            <circle cx="300" cy="474" r="7"/><circle cx="300" cy="562" r="7"/>
-          </g>
-          <path d="M300,172 C300,172 380,280 380,358 C380,405 344,444 300,444 C256,444 220,405 220,358 C220,280 300,172 300,172 Z"
-            stroke="#0A1526" strokeWidth="14" fill="none" strokeLinejoin="round"/>
-          <path d="M300,178 C300,178 374,282 374,357 C374,401 341,438 300,438 C259,438 226,401 226,357 C226,282 300,178 300,178 Z"
-            fill="#0A1526"/>
-          <path d="M300,195 C300,195 360,288 360,355 C360,394 333,424 300,424 C267,424 240,394 240,355 C240,288 300,195 300,195 Z"
-            stroke="url(#navDropGrad)" strokeWidth="5" fill="none"
-            filter="url(#navNeonGlow)" strokeLinejoin="round"/>
-          <path d="M300,240 V272 H256 L242,286 V318"
-            stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
-            strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
-          <path d="M300,272 H346 L360,286 V318 H326"
-            stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
-            strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
-          <path d="M300,350 V378 H268 L256,390 V412"
-            stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
-            strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
-          <path d="M300,378 H334 L346,390"
-            stroke="url(#navDropGrad)" strokeWidth="3" fill="none"
-            strokeLinecap="round" strokeLinejoin="round" filter="url(#navSoftGlow)"/>
-          <g fill="#00F2FE" filter="url(#navSoftGlow)">
-            <circle cx="300" cy="236" r="6.5"/><circle cx="242" cy="322" r="6"/>
-            <circle cx="326" cy="322" r="6"/>  <circle cx="300" cy="346" r="5"/>
-            <circle cx="256" cy="414" r="6"/>  <circle cx="350" cy="394" r="6"/>
-          </g>
-          <path d="M108,118 L300,158 L492,118 L492,328 L300,532 L108,328 Z"
-            stroke="#0A1526" strokeWidth="1.5" fill="none" opacity="0.45"/>
-          <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"
-            stroke="#0A1526" strokeWidth="6" fill="none" strokeLinejoin="miter"/>
-          <g stroke="#0A1526" strokeWidth="1.8" fill="none" clipPath="url(#navShieldClip)">
-            <line x1="190" y1="244" x2="382" y2="474"/>
-            <line x1="410" y1="244" x2="218" y2="474"/>
-            <line x1="78"  y1="218" x2="426" y2="374"/>
-            <line x1="522" y1="218" x2="174" y2="374"/>
-            <line x1="300" y1="142" x2="300" y2="562"/>
-          </g>
-          <g fill="#0A1526">
-            <circle cx="78"  cy="98"  r="8"/><circle cx="300" cy="142" r="8"/>
-            <circle cx="522" cy="98"  r="8"/><circle cx="78"  cy="218" r="7"/>
-            <circle cx="522" cy="218" r="7"/><circle cx="78"  cy="338" r="8"/>
-            <circle cx="522" cy="338" r="8"/><circle cx="300" cy="562" r="8"/>
-            <circle cx="190" cy="244" r="7"/><circle cx="410" cy="244" r="7"/>
-            <circle cx="174" cy="374" r="7"/><circle cx="426" cy="374" r="7"/>
-            <circle cx="218" cy="474" r="7"/><circle cx="382" cy="474" r="7"/>
-          </g>
-        </svg>
-        <span style={{ fontWeight:800, fontSize: isMobile ? 13 : 15, color:T.text }}>
+        <HexaPrismLogo size={isMobile ? 30 : 36} />
+        <span style={{ fontWeight:800, fontSize: isMobile ? 13 : 15, color:T.text, letterSpacing:"-0.01em" }}>
           ClearGuard
         </span>
       </div>
@@ -348,7 +364,6 @@ function Nav({ onReset, onExport }) {
             onClick={onReset}
             className="cg-no-print"
             style={{
-              // FIX: min-height 44px touch target
               minHeight: BTN_H,
               fontSize:     isMobile ? 12 : 13,
               color:        T.muted,
@@ -371,12 +386,11 @@ function Nav({ onReset, onExport }) {
         <button
           onClick={onExport}
           style={{
-            // FIX: min-height 44px touch target
             minHeight:  BTN_H,
             fontSize:   isMobile ? 12 : 13,
             fontWeight: 700,
             background: T.accent,
-            color:      "#fff",
+            color:      "#000",   // DARK: black text on teal for contrast
             border:     "none",
             padding:    isMobile ? "0 10px" : "0 16px",
             borderRadius: 8,
@@ -393,7 +407,6 @@ function Nav({ onReset, onExport }) {
 
         {/* ── Avatar с дропдауном ── */}
         <div ref={menuRef} style={{ position:"relative", flexShrink:0 }}>
-          {/* FIX: avatar button 44×44px touch target */}
           <button
             onClick={() => setMenuOpen(o => !o)}
             className="cg-no-print"
@@ -401,22 +414,24 @@ function Nav({ onReset, onExport }) {
             style={{
               width: BTN_H, height: BTN_H,
               borderRadius: "50%",
-              background: menuOpen ? "#cbd5e1" : "#e2e8f0",
-              border: menuOpen ? `2px solid ${T.accent}` : "2px solid transparent",
+              // DARK: dark avatar bg
+              background: menuOpen ? "#1E2D3D" : "#1A2333",
+              border: menuOpen ? `2px solid ${T.accent}` : `2px solid ${T.border}`,
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: "pointer", flexShrink: 0, padding: 0,
               transition: "border-color 0.15s, background 0.15s",
               boxSizing: "border-box",
             }}
           >
+            {/* DARK: muted slate icon on dark bg */}
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="5.5" r="2.5" fill="#94a3b8"/>
+              <circle cx="8" cy="5.5" r="2.5" fill="#64748B"/>
               <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
-                    stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/>
+                    stroke="#64748B" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </button>
 
-          {/* Дропдаун */}
+          {/* Dropdown */}
           {menuOpen && (
             <div style={{
               position: "absolute",
@@ -426,7 +441,8 @@ function Nav({ onReset, onExport }) {
               background: T.surface,
               border: `1px solid ${T.border}`,
               borderRadius: 10,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+              // DARK: stronger shadow
+              boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
               zIndex: 200,
               overflow: "hidden",
             }}>
@@ -450,23 +466,23 @@ function Nav({ onReset, onExport }) {
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
                       width: "100%",
-                      // FIX: dropdown items also 44px touch targets
                       minHeight: BTN_H,
                       padding: "0 14px",
                       background: "none", border: "none",
                       cursor: item.disabled ? "default" : "pointer",
                       textAlign: "left", fontFamily: "inherit",
-                      opacity: item.disabled ? 0.45 : 1,
+                      opacity: item.disabled ? 0.4 : 1,
                       transition: "background 0.1s",
                       boxSizing: "border-box",
                     }}
-                    onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "#f8fafc"; }}
+                    // DARK: dark hover
+                    onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "#1A1F2A"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
                   >
                     <span style={{ fontSize:15 }}>{item.icon}</span>
                     <div>
                       <div style={{ fontSize:12, fontWeight:600, color:T.text }}>{item.label}</div>
-                      {item.sub && <div style={{ fontSize:10, color:T.subtle, marginTop:1 }}>{item.sub}</div>}
+                      {item.sub && <div style={{ fontSize:10, color:T.muted, marginTop:1 }}>{item.sub}</div>}
                     </div>
                   </button>
                 );
@@ -506,9 +522,11 @@ function UploadStage({ onFile }) {
           onDragLeave={()=>setDragging(false)}
           onClick={()=>inputRef.current?.click()}
           style={{
-            border:`2px dashed ${dragging?T.accent:T.border}`,
+            border:`2px dashed ${dragging ? T.accent : T.border}`,
             borderRadius:14, padding:"52px 36px", textAlign:"center",
-            cursor:"pointer", background:dragging?"#eff6ff":T.surface,
+            cursor:"pointer",
+            // DARK: dark drag zone bg
+            background: dragging ? "#0A1E2A" : T.surface,
             transition:"all 0.18s ease",
           }}
         >
@@ -516,29 +534,32 @@ function UploadStage({ onFile }) {
             onChange={(e)=>onFile(e.target.files[0])} />
           <svg width="44" height="44" viewBox="0 0 44 44" fill="none"
                style={{margin:"0 auto 16px",display:"block"}}>
-            <rect width="44" height="44" rx="10" fill={dragging?"#dbeafe":"#f1f5f9"}/>
+            {/* DARK: icon bg */}
+            <rect width="44" height="44" rx="10" fill={dragging ? "#0D2035" : "#1A2133"}/>
             <path d="M22 28V16M22 16l-5 5M22 16l5 5"
-                  stroke={dragging?T.accent:T.muted} strokeWidth="2" strokeLinecap="round"/>
-            <path d="M14 32h16" stroke={dragging?T.accent:T.border}
+                  stroke={dragging ? T.accent : T.muted} strokeWidth="2" strokeLinecap="round"/>
+            <path d="M14 32h16" stroke={dragging ? T.accent : T.border}
                   strokeWidth="2" strokeLinecap="round"/>
           </svg>
           <div style={{fontSize:16,fontWeight:700,color:T.text,marginBottom:6}}>
             {dragging?"Release to analyze":"Drop Permit PDF here"}
           </div>
-          <div style={{fontSize:13,color:T.subtle,marginBottom:18}}>
+          <div style={{fontSize:13,color:T.muted,marginBottom:18}}>
             EPA-issued NPDES permits, DMRs, and fact sheets
           </div>
-          {/* FIX: "Select PDF file" — the whole drop zone is clickable,
-              the span is a visual affordance only, no separate touch target needed */}
+          {/* DARK: Select PDF button — teal outline on dark */}
           <span style={{
             display:"inline-block", fontSize:13, fontWeight:600,
-            color:T.accent, background:"#eff6ff",
-            padding:"10px 20px", borderRadius:7, border:`1px solid #bfdbfe`,
+            color:T.accent,
+            // DARK: dark bg with teal border
+            background:"#0A1E1D",
+            padding:"10px 20px", borderRadius:7,
+            border:`1px solid ${T.accent}55`,
             minHeight: 44, lineHeight: "24px", boxSizing: "border-box",
           }}>Select PDF file</span>
         </div>
 
-        {/* FIX: demo link — min-height 44px touch target */}
+        {/* Demo permit link */}
         <div style={{textAlign:"center",marginTop:16}}>
           <button onClick={()=>onFile(null)} style={{
             minHeight: 44,
@@ -588,9 +609,12 @@ function LoadingStage({ fileName }) {
     }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{maxWidth:380,width:"100%",padding:"0 20px",textAlign:"center"}}>
+        {/* DARK: teal spinner on dark bg */}
         <div style={{
-          width:52,height:52,border:`3px solid ${T.border}`,
-          borderTop:`3px solid ${T.accent}`,borderRadius:"50%",
+          width:52,height:52,
+          border:`3px solid ${T.border}`,
+          borderTop:`3px solid ${T.accent}`,
+          borderRadius:"50%",
           animation:"spin 0.75s linear infinite",margin:"0 auto 28px",
         }}/>
         <h2 style={{fontSize:18,fontWeight:700,color:T.text,margin:"0 0 6px"}}>
@@ -603,13 +627,15 @@ function LoadingStage({ fileName }) {
           {steps.map((step,i)=>(
             <div key={i} style={{
               display:"flex",alignItems:"center",gap:12,padding:"7px 0",
-              opacity:i>current?0.28:1,transition:"opacity 0.3s",
+              opacity:i>current?0.25:1,transition:"opacity 0.3s",
             }}>
               <div style={{
                 width:22,height:22,borderRadius:"50%",flexShrink:0,
                 backgroundColor:i<current?T.success:i===current?T.accent:T.border,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                color:"#fff",fontSize:10,fontWeight:800,transition:"background-color 0.3s",
+                // DARK: black text on teal/green circles
+                color:i<current||i===current?"#000":"transparent",
+                fontSize:10,fontWeight:800,transition:"background-color 0.3s",
               }}>{i<current?"✓":i+1}</div>
               <span style={{
                 fontSize:13,fontWeight:i===current?600:400,
@@ -644,28 +670,28 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     tableScrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
   };
 
-  // FIX: scroll arrows 44×44px
+  // DARK: scroll arrow style
   const scrollBtnStyle = {
     width: 44, height: 44, minWidth: 44,
     borderRadius: 8,
-    background: "#f1f5f9", border: `1px solid ${T.border}`,
+    background: "#1A2133",
+    border: `1px solid ${T.border}`,
     color: T.text, fontSize: 20, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontFamily: "inherit", lineHeight: 1, padding: 0, flexShrink: 0,
     boxSizing: "border-box",
   };
 
-  // FIX: table columns — on mobile hide secondary columns to reduce scroll width
-  // Desktop: all 9 columns | Mobile: 5 essential columns
+  // Mobile column set: 5 essential columns
   const allColumns = [
     { key:"param",     label:"Parameter",    mobileShow: true  },
-    { key:"fullName",  label:"Full Name",    mobileShow: false }, // hidden on mobile
-    { key:"limitType", label:"Limit Type",   mobileShow: false }, // hidden on mobile
+    { key:"fullName",  label:"Full Name",    mobileShow: false },
+    { key:"limitType", label:"Limit Type",   mobileShow: false },
     { key:"limitStr",  label:"Permit Limit", mobileShow: true  },
     { key:"measured",  label:"Measured",     mobileShow: true  },
     { key:"deviation", label:"Deviation",    mobileShow: true  },
-    { key:"freq",      label:"Freq",         mobileShow: false }, // hidden on mobile
-    { key:"sample",    label:"Sample",       mobileShow: false }, // hidden on mobile
+    { key:"freq",      label:"Freq",         mobileShow: false },
+    { key:"sample",    label:"Sample",       mobileShow: false },
     { key:"status",    label:"Status",       mobileShow: true  },
   ];
   const visibleCols = isMobile
@@ -713,12 +739,12 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
       <Nav onReset={onReset} onExport={handleExportPDF}/>
       <div style={{maxWidth:1080,margin:"0 auto",padding:"28px 20px 48px"}}>
 
-        {/* Status banner */}
+        {/* Status banner — DARK versions */}
         {isLiveData ? (
           <div className="cg-no-print" style={{
-            background:"#ecfdf5",border:`1px solid #6ee7b7`,borderRadius:8,
-            padding:"10px 16px",marginBottom:20,fontSize:13,color:T.success,
-            fontWeight:600,display:"flex",alignItems:"center",gap:8,
+            background:"#042D1E", border:`1px solid #065F46`, borderRadius:8,
+            padding:"10px 16px", marginBottom:20, fontSize:13, color:T.success,
+            fontWeight:600, display:"flex", alignItems:"center", gap:8,
           }}>
             ✓ Live data — extracted from {fileName} via Railway API
             {pending.length>0 && (
@@ -727,31 +753,32 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
           </div>
         ) : apiError ? (
           <div className="cg-no-print" style={{
-            background:"#fff8f8",border:`1px solid #fca5a5`,borderRadius:8,
-            padding:"10px 16px",marginBottom:20,fontSize:13,color:T.danger,fontWeight:600,
+            background:"#1F0505", border:`1px solid #7F1D1D`, borderRadius:8,
+            padding:"10px 16px", marginBottom:20, fontSize:13, color:T.danger, fontWeight:600,
           }}>⚠ API unreachable ({apiError}) — showing demo data</div>
         ) : (
           <div className="cg-no-print" style={{
-            background:"#fffbeb",border:`1px solid #fde68a`,borderRadius:8,
-            padding:"10px 16px",marginBottom:20,fontSize:13,color:T.warn,fontWeight:600,
+            // DARK: dark amber tint
+            background:"#1C1400", border:`1px solid #7C5E00`, borderRadius:8,
+            padding:"10px 16px", marginBottom:20, fontSize:13, color:T.warn, fontWeight:600,
           }}>⚡ Demo mode — mock data for Permit IN0012345</div>
         )}
 
         {/* Facility header */}
         <div style={{
-          background:T.surface,border:`1px solid ${T.border}`,
-          borderRadius:12,padding:"22px 24px",marginBottom:20,
+          background:T.surface, border:`1px solid ${T.border}`,
+          borderRadius:12, padding:"22px 24px", marginBottom:20,
         }}>
           <div style={{
             display:"flex", flexWrap:"wrap",
             justifyContent:"space-between", alignItems:"flex-start", gap:16,
           }}>
             <div>
-              <div style={{fontSize:11,color:T.subtle,fontWeight:600,marginBottom:4}}>FACILITY</div>
+              <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:4,letterSpacing:"0.06em"}}>FACILITY</div>
               <div style={{fontSize:20,fontWeight:800,color:T.text}}>{facility.name}</div>
               <div style={{fontSize:13,color:T.muted,marginTop:3}}>{facility.authority}</div>
             </div>
-            {/* FIX: permit detail chips — 2-column grid on mobile */}
+            {/* Permit detail chips — 2-column grid on mobile */}
             <div style={{
               display:"grid",
               gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, auto)",
@@ -761,7 +788,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
                 ["Period",facility.period],["Expires",facility.expires]
               ].map(([lbl,val])=>(
                 <div key={lbl}>
-                  <div style={{fontSize:10,color:T.subtle,fontWeight:600,marginBottom:3}}>{lbl}</div>
+                  <div style={{fontSize:10,color:T.muted,fontWeight:600,marginBottom:3,letterSpacing:"0.05em"}}>{lbl}</div>
                   <div style={{fontSize:13,fontWeight:700,color:T.text}}>{val||"—"}</div>
                 </div>
               ))}
@@ -818,7 +845,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
               {rows.filter(r=>r.status==="pass").length>0 &&
                 <Pill label={`${rows.filter(r=>r.status==="pass").length} Compliant`} color={T.success}/>}
 
-              {/* FIX: scroll arrows 44×44px, always show on mobile */}
+              {/* Scroll arrows — mobile only */}
               {isMobile && (
                 <div className="cg-no-print" style={{display:"flex",gap:4,marginLeft:4}}>
                   <button onClick={()=>scrollTable(-1)} style={scrollBtnStyle} title="Scroll left">‹</button>
@@ -828,21 +855,22 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
             </div>
           </div>
 
-          {/* Scrollable table — FIX: min-width reduced on mobile because fewer columns */}
+          {/* Scrollable table */}
           <div ref={tableScrollRef} style={{overflowX:"auto", borderRadius:"0 0 12px 12px"}}>
             <table style={{
               width:"100%", borderCollapse:"collapse", fontSize:13,
-              // FIX: narrower min-width on mobile (5 columns vs 9)
               minWidth: isMobile ? 480 : 700,
             }}>
               <thead>
-                <tr style={{background:"#f8fafc"}}>
+                {/* DARK: dark table header */}
+                <tr style={{background:"#0D1017"}}>
                   {visibleCols.map(col => (
                     <th key={col.key} style={{
                       padding: isMobile ? "11px 12px" : "11px 14px",
                       textAlign:"left", fontSize:11,
                       fontWeight:700, color:T.muted,
-                      borderBottom:`1px solid ${T.border}`, whiteSpace:"nowrap",
+                      borderBottom:`1px solid ${T.border}`,
+                      whiteSpace:"nowrap", letterSpacing:"0.04em",
                     }}>{col.label}</th>
                   ))}
                 </tr>
@@ -897,9 +925,9 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
           </div>
 
           <div style={{
-            padding:"13px 22px",borderTop:`1px solid ${T.border}`,
-            fontSize:11,color:T.subtle,
-            display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6,
+            padding:"13px 22px", borderTop:`1px solid ${T.border}`,
+            fontSize:11, color:T.subtle,
+            display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:6,
           }}>
             <span>{isLiveData?"Live API":"Mock data"} · {fileName||"demo permit"} · 40 CFR Part 122</span>
             <span>Analyzed: {new Date().toLocaleString("en-US")}</span>
