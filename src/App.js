@@ -4,7 +4,7 @@
  * Connects to:  https://saas-npdes-backend-production.up.railway.app
  * Endpoint:     POST /api/parse-permit  (multipart/form-data, field: "file")
  *
- * v3 — Enterprise Dark theme (#09090B bg / #14B8A6 teal)
+ * v4 — Adaptive theme (light by default / dark when OS dark mode is on)
  * Mobile fixes:
  *  • Touch targets ≥ 44px on all interactive elements
  *  • Nav action buttons: minHeight 44px
@@ -20,24 +20,48 @@ import { useState, useRef, useEffect } from "react";
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const API_BASE = "https://saas-npdes-backend-production.up.railway.app";
 
-// ─── DESIGN TOKENS — Enterprise Dark ──────────────────────────────────────────
-const T = {
-  bg:      "#09090B",   // near-black — matches landing page
-  surface: "#111318",   // dark card / nav surface
-  accent:  "#14B8A6",   // teal — matches landing page
-  danger:  "#F87171",   // red (brightened for dark bg legibility)
-  success: "#34D399",   // green (brightened for dark bg)
-  warn:    "#FBBF24",   // amber (brightened for dark bg)
-  pending: "#9CA3AF",
-  border:  "#1E2330",   // dark border
-  text:    "#F1F5F9",   // near-white body text
-  muted:   "#8B929F",   // secondary text
-  subtle:  "#374151",   // very muted / disabled
-  rowAlt:  "#0E1117",   // alternating table row
-  rowDgr:  "#1C0A0A",   // danger row tint
-  rowPnd:  "#0F1117",   // pending row tint
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const LIGHT_T = {
+  bg:      "#f0f4f8",
+  surface: "#ffffff",
+  accent:  "#1a56db",
+  danger:  "#e02424",
+  success: "#057a55",
+  warn:    "#b45309",
+  pending: "#6b7280",
+  border:  "#dde3ed",
+  text:    "#111928",
+  muted:   "#6b7280",
+  subtle:  "#9ca3af",
+  rowAlt:  "#f9fafb",
+  rowDgr:  "#fff8f8",
+  rowPnd:  "#f8fafc",
 };
 
+const DARK_T = {
+  bg:      "#09090B",
+  surface: "#111318",
+  accent:  "#14B8A6",
+  danger:  "#F87171",
+  success: "#34D399",
+  warn:    "#FBBF24",
+  pending: "#9CA3AF",
+  border:  "#1E2330",
+  text:    "#F1F5F9",
+  muted:   "#8B929F",
+  subtle:  "#374151",
+  rowAlt:  "#0E1117",
+  rowDgr:  "#1C0A0A",
+  rowPnd:  "#0F1117",
+};
+
+// ─── THEME STATE (module-level, set before each render by App) ────────────────
+// Works because React calls App() first, which sets these, then renders children
+// in the same synchronous render cycle — all components see the updated values.
+let T = LIGHT_T;
+let isDark = false;
+
+// ─── PARAM NAMES ─────────────────────────────────────────────────────────────
 const PARAM_NAMES = {
   "BOD₅":       "5-Day Biochemical Oxygen Demand",
   "BOD5":       "5-Day Biochemical Oxygen Demand",
@@ -133,12 +157,19 @@ function deviation(row) {
 
 // ─── MICRO-COMPONENTS ─────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
-  // DARK: badge bg/border tones tuned for dark surface
-  const cfg = {
-    exceed:  { bg:"#2D0A0A",  color:T.danger,  border:"#7F1D1D", text:"⚠  Exceedance"   },
-    pass:    { bg:"#042D1E",  color:T.success, border:"#065F46", text:"✓  Compliant"    },
-    pending: { bg:"#111318",  color:T.muted,   border:T.border,  text:"↑  Awaiting DMR" },
-  }[status] || { bg:T.surface, color:T.muted, border:T.border, text:status };
+  const cfg = isDark
+    ? {
+        exceed:  { bg:"#2D0A0A",  color:T.danger,  border:"#7F1D1D", text:"⚠  Exceedance"   },
+        pass:    { bg:"#042D1E",  color:T.success, border:"#065F46", text:"✓  Compliant"    },
+        pending: { bg:"#111318",  color:T.muted,   border:T.border,  text:"↑  Awaiting DMR" },
+      }[status]
+    : {
+        exceed:  { bg:"#fef2f2",  color:T.danger,  border:"#fecaca", text:"⚠  Exceedance"   },
+        pass:    { bg:"#ecfdf5",  color:T.success, border:"#a7f3d0", text:"✓  Compliant"    },
+        pending: { bg:T.surface,  color:T.muted,   border:T.border,  text:"↑  Awaiting DMR" },
+      }[status]
+    || { bg:T.surface, color:T.muted, border:T.border, text:status };
+
   return (
     <span style={{
       backgroundColor:cfg.bg, color:cfg.color,
@@ -171,11 +202,20 @@ function Pill({ label, color }) {
   );
 }
 
-// ─── HEXA-PRISM LOGO SVG (dark-theme version) ────────────────────────────────
-// Structural wireframe uses white/light strokes at low opacity (was dark ink on light bg).
-// Teal gradient + neon glow circuits remain unchanged — they pop on dark bg.
+// ─── HEXA-PRISM LOGO SVG (adapts to light / dark theme) ─────────────────────
 function HexaPrismLogo({ size = 44 }) {
-  const h = Math.round(size * (600 / 600)); // square viewBox
+  const h = Math.round(size * (600 / 600));
+
+  // Logo ink color set — dark bg uses white rgba, light bg uses dark rgba
+  const wire   = isDark ? "rgba(255,255,255,0.13)" : "rgba(10,21,38,0.20)";
+  const dots   = isDark ? "rgba(255,255,255,0.22)" : "rgba(10,21,38,0.30)";
+  const outer  = isDark ? "rgba(255,255,255,0.30)" : "rgba(10,21,38,0.50)";
+  const inner  = isDark ? "rgba(255,255,255,0.12)" : "rgba(10,21,38,0.08)";
+  const cross  = isDark ? "rgba(255,255,255,0.07)" : "rgba(10,21,38,0.05)";
+  const verts  = isDark ? "rgba(255,255,255,0.45)" : "rgba(10,21,38,0.50)";
+  const ring   = isDark ? "rgba(255,255,255,0.18)" : "rgba(10,21,38,0.12)";
+  const drop   = isDark ? "#051A18"                : "#051020";
+
   return (
     <svg width={size} height={h} viewBox="0 0 600 600" fill="none">
       <defs>
@@ -199,8 +239,8 @@ function HexaPrismLogo({ size = 44 }) {
         </clipPath>
       </defs>
 
-      {/* Hex wireframe bg — subtle white lines inside shield */}
-      <g clipPath="url(#navShieldClip)" stroke="rgba(255,255,255,0.13)" strokeWidth="2.8" fill="none">
+      {/* Hex wireframe bg */}
+      <g clipPath="url(#navShieldClip)" stroke={wire} strokeWidth="2.8" fill="none">
         <line x1="300" y1="142" x2="190" y2="244"/>
         <line x1="300" y1="142" x2="410" y2="244"/>
         <line x1="78"  y1="98"  x2="190" y2="244"/>
@@ -225,8 +265,8 @@ function HexaPrismLogo({ size = 44 }) {
         <line x1="382" y1="474" x2="300" y2="562"/>
       </g>
 
-      {/* Hex wireframe inner nodes — small white dots */}
-      <g fill="rgba(255,255,255,0.22)" clipPath="url(#navShieldClip)">
+      {/* Hex wireframe inner nodes */}
+      <g fill={dots} clipPath="url(#navShieldClip)">
         <circle cx="300" cy="142" r="7"/><circle cx="190" cy="244" r="7"/>
         <circle cx="410" cy="244" r="7"/><circle cx="78"  cy="218" r="7"/>
         <circle cx="522" cy="218" r="7"/><circle cx="300" cy="318" r="7"/>
@@ -235,11 +275,11 @@ function HexaPrismLogo({ size = 44 }) {
         <circle cx="300" cy="474" r="7"/><circle cx="300" cy="562" r="7"/>
       </g>
 
-      {/* Water drop — dark teal fill with white outer ring */}
+      {/* Water drop — dark fill with subtle outer ring */}
       <path d="M300,172 C300,172 380,280 380,358 C380,405 344,444 300,444 C256,444 220,405 220,358 C220,280 300,172 300,172 Z"
-        stroke="rgba(255,255,255,0.18)" strokeWidth="14" fill="none" strokeLinejoin="round"/>
+        stroke={ring} strokeWidth="14" fill="none" strokeLinejoin="round"/>
       <path d="M300,178 C300,178 374,282 374,357 C374,401 341,438 300,438 C259,438 226,401 226,357 C226,282 300,178 300,178 Z"
-        fill="#051A18"/>
+        fill={drop}/>
 
       {/* Neon drop outline — teal glow */}
       <path d="M300,195 C300,195 360,288 360,355 C360,394 333,424 300,424 C267,424 240,394 240,355 C240,288 300,195 300,195 Z"
@@ -267,16 +307,16 @@ function HexaPrismLogo({ size = 44 }) {
         <circle cx="256" cy="414" r="6"/>  <circle cx="350" cy="394" r="6"/>
       </g>
 
-      {/* Shield inner border — subtle white */}
+      {/* Shield inner border */}
       <path d="M108,118 L300,158 L492,118 L492,328 L300,532 L108,328 Z"
-        stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" fill="none"/>
+        stroke={inner} strokeWidth="1.5" fill="none"/>
 
-      {/* Shield outer border — more visible white */}
+      {/* Shield outer border */}
       <path d="M78,98 L300,142 L522,98 L522,338 L300,562 L78,338 Z"
-        stroke="rgba(255,255,255,0.30)" strokeWidth="6" fill="none" strokeLinejoin="miter"/>
+        stroke={outer} strokeWidth="6" fill="none" strokeLinejoin="miter"/>
 
-      {/* Cross-lines inside shield — very subtle */}
-      <g stroke="rgba(255,255,255,0.07)" strokeWidth="1.8" fill="none" clipPath="url(#navShieldClip)">
+      {/* Cross-lines inside shield */}
+      <g stroke={cross} strokeWidth="1.8" fill="none" clipPath="url(#navShieldClip)">
         <line x1="190" y1="244" x2="382" y2="474"/>
         <line x1="410" y1="244" x2="218" y2="474"/>
         <line x1="78"  y1="218" x2="426" y2="374"/>
@@ -284,8 +324,8 @@ function HexaPrismLogo({ size = 44 }) {
         <line x1="300" y1="142" x2="300" y2="562"/>
       </g>
 
-      {/* Shield vertex nodes — white dots */}
-      <g fill="rgba(255,255,255,0.45)">
+      {/* Shield vertex nodes */}
+      <g fill={verts}>
         <circle cx="78"  cy="98"  r="8"/><circle cx="300" cy="142" r="8"/>
         <circle cx="522" cy="98"  r="8"/><circle cx="78"  cy="218" r="7"/>
         <circle cx="522" cy="218" r="7"/><circle cx="78"  cy="338" r="8"/>
@@ -335,6 +375,13 @@ function Nav({ onReset, onExport }) {
   ];
 
   const BTN_H = 44;
+
+  // Theme-adaptive colors
+  const avatarBg       = isDark ? (menuOpen ? "#1E2D3D" : "#1A2333") : (menuOpen ? "#E8EDF5" : "#EEF2F8");
+  const avatarBorder   = menuOpen ? `2px solid ${T.accent}` : `2px solid ${T.border}`;
+  const avatarIconFill = isDark ? "#64748B" : "#94a3b8";
+  const dropdownShadow = isDark ? "0 8px 32px rgba(0,0,0,0.6)" : "0 8px 24px rgba(0,0,0,0.10)";
+  const hoverBg        = isDark ? "#1A1F2A" : "#f8fafc";
 
   return (
     <nav style={{
@@ -390,7 +437,8 @@ function Nav({ onReset, onExport }) {
             fontSize:   isMobile ? 12 : 13,
             fontWeight: 700,
             background: T.accent,
-            color:      "#000",   // DARK: black text on teal for contrast
+            // Light: white text on blue; Dark: black text on teal (contrast)
+            color:      isDark ? "#000" : "#fff",
             border:     "none",
             padding:    isMobile ? "0 10px" : "0 16px",
             borderRadius: 8,
@@ -414,20 +462,18 @@ function Nav({ onReset, onExport }) {
             style={{
               width: BTN_H, height: BTN_H,
               borderRadius: "50%",
-              // DARK: dark avatar bg
-              background: menuOpen ? "#1E2D3D" : "#1A2333",
-              border: menuOpen ? `2px solid ${T.accent}` : `2px solid ${T.border}`,
+              background: avatarBg,
+              border: avatarBorder,
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: "pointer", flexShrink: 0, padding: 0,
               transition: "border-color 0.15s, background 0.15s",
               boxSizing: "border-box",
             }}
           >
-            {/* DARK: muted slate icon on dark bg */}
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="5.5" r="2.5" fill="#64748B"/>
+              <circle cx="8" cy="5.5" r="2.5" fill={avatarIconFill}/>
               <path d="M2 13c0-3.314 2.686-5 6-5s6 1.686 6 5"
-                    stroke="#64748B" strokeWidth="1.5" strokeLinecap="round"/>
+                    stroke={avatarIconFill} strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </button>
 
@@ -441,8 +487,7 @@ function Nav({ onReset, onExport }) {
               background: T.surface,
               border: `1px solid ${T.border}`,
               borderRadius: 10,
-              // DARK: stronger shadow
-              boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+              boxShadow: dropdownShadow,
               zIndex: 200,
               overflow: "hidden",
             }}>
@@ -475,8 +520,7 @@ function Nav({ onReset, onExport }) {
                       transition: "background 0.1s",
                       boxSizing: "border-box",
                     }}
-                    // DARK: dark hover
-                    onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = "#1A1F2A"; }}
+                    onMouseEnter={e => { if (!item.disabled) e.currentTarget.style.background = hoverBg; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
                   >
                     <span style={{ fontSize:15 }}>{item.icon}</span>
@@ -504,6 +548,12 @@ function UploadStage({ onFile }) {
     const f = e.dataTransfer.files[0];
     if (f) onFile(f);
   };
+
+  // Theme-adaptive upload zone colors
+  const zoneBg       = dragging ? (isDark ? "#0A1E2A" : "#eff6ff") : T.surface;
+  const iconRectFill = dragging ? (isDark ? "#0D2035" : "#dbeafe") : (isDark ? "#1A2133" : "#f1f5f9");
+  const selectBg     = isDark ? "#0A1E1D" : "#eff6ff";
+
   return (
     <div style={{ minHeight:"100vh", background:T.bg }}>
       <Nav />
@@ -525,8 +575,7 @@ function UploadStage({ onFile }) {
             border:`2px dashed ${dragging ? T.accent : T.border}`,
             borderRadius:14, padding:"52px 36px", textAlign:"center",
             cursor:"pointer",
-            // DARK: dark drag zone bg
-            background: dragging ? "#0A1E2A" : T.surface,
+            background: zoneBg,
             transition:"all 0.18s ease",
           }}
         >
@@ -534,8 +583,7 @@ function UploadStage({ onFile }) {
             onChange={(e)=>onFile(e.target.files[0])} />
           <svg width="44" height="44" viewBox="0 0 44 44" fill="none"
                style={{margin:"0 auto 16px",display:"block"}}>
-            {/* DARK: icon bg */}
-            <rect width="44" height="44" rx="10" fill={dragging ? "#0D2035" : "#1A2133"}/>
+            <rect width="44" height="44" rx="10" fill={iconRectFill}/>
             <path d="M22 28V16M22 16l-5 5M22 16l5 5"
                   stroke={dragging ? T.accent : T.muted} strokeWidth="2" strokeLinecap="round"/>
             <path d="M14 32h16" stroke={dragging ? T.accent : T.border}
@@ -547,12 +595,10 @@ function UploadStage({ onFile }) {
           <div style={{fontSize:13,color:T.muted,marginBottom:18}}>
             EPA-issued NPDES permits, DMRs, and fact sheets
           </div>
-          {/* DARK: Select PDF button — teal outline on dark */}
           <span style={{
             display:"inline-block", fontSize:13, fontWeight:600,
             color:T.accent,
-            // DARK: dark bg with teal border
-            background:"#0A1E1D",
+            background:selectBg,
             padding:"10px 20px", borderRadius:7,
             border:`1px solid ${T.accent}55`,
             minHeight: 44, lineHeight: "24px", boxSizing: "border-box",
@@ -602,6 +648,10 @@ function LoadingStage({ fileName }) {
     }, 440);
     return () => clearInterval(id);
   }, []);
+
+  // Light: white text on colored circles; Dark: black text on teal/green
+  const circleTextColor = isDark ? "#000" : "#fff";
+
   return (
     <div style={{
       minHeight:"100vh", background:T.bg,
@@ -609,7 +659,6 @@ function LoadingStage({ fileName }) {
     }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{maxWidth:380,width:"100%",padding:"0 20px",textAlign:"center"}}>
-        {/* DARK: teal spinner on dark bg */}
         <div style={{
           width:52,height:52,
           border:`3px solid ${T.border}`,
@@ -633,8 +682,7 @@ function LoadingStage({ fileName }) {
                 width:22,height:22,borderRadius:"50%",flexShrink:0,
                 backgroundColor:i<current?T.success:i===current?T.accent:T.border,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                // DARK: black text on teal/green circles
-                color:i<current||i===current?"#000":"transparent",
+                color:i<current||i===current?circleTextColor:"transparent",
                 fontSize:10,fontWeight:800,transition:"background-color 0.3s",
               }}>{i<current?"✓":i+1}</div>
               <span style={{
@@ -670,11 +718,11 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     tableScrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
   };
 
-  // DARK: scroll arrow style
+  // Scroll arrows: theme-adaptive
   const scrollBtnStyle = {
     width: 44, height: 44, minWidth: 44,
     borderRadius: 8,
-    background: "#1A2133",
+    background: isDark ? "#1A2133" : "#f1f5f9",
     border: `1px solid ${T.border}`,
     color: T.text, fontSize: 20, cursor: "pointer",
     display: "flex", alignItems: "center", justifyContent: "center",
@@ -734,15 +782,29 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
     }, 1000);
   };
 
+  // Status banner colors — theme-adaptive
+  const bannerDemo = isDark
+    ? { bg:"#1C1400", border:"#7C5E00" }
+    : { bg:"#fffbeb", border:"#d97706" };
+  const bannerError = isDark
+    ? { bg:"#1F0505", border:"#7F1D1D" }
+    : { bg:"#fef2f2", border:"#dc2626" };
+  const bannerLive = isDark
+    ? { bg:"#042D1E", border:"#065F46" }
+    : { bg:"#ecfdf5", border:"#059669" };
+
+  // Table header bg — theme-adaptive
+  const theadBg = isDark ? "#0D1017" : "#f8fafc";
+
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Nav onReset={onReset} onExport={handleExportPDF}/>
       <div style={{maxWidth:1080,margin:"0 auto",padding:"28px 20px 48px"}}>
 
-        {/* Status banner — DARK versions */}
+        {/* Status banner */}
         {isLiveData ? (
           <div className="cg-no-print" style={{
-            background:"#042D1E", border:`1px solid #065F46`, borderRadius:8,
+            background:bannerLive.bg, border:`1px solid ${bannerLive.border}`, borderRadius:8,
             padding:"10px 16px", marginBottom:20, fontSize:13, color:T.success,
             fontWeight:600, display:"flex", alignItems:"center", gap:8,
           }}>
@@ -753,13 +815,12 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
           </div>
         ) : apiError ? (
           <div className="cg-no-print" style={{
-            background:"#1F0505", border:`1px solid #7F1D1D`, borderRadius:8,
+            background:bannerError.bg, border:`1px solid ${bannerError.border}`, borderRadius:8,
             padding:"10px 16px", marginBottom:20, fontSize:13, color:T.danger, fontWeight:600,
           }}>⚠ API unreachable ({apiError}) — showing demo data</div>
         ) : (
           <div className="cg-no-print" style={{
-            // DARK: dark amber tint
-            background:"#1C1400", border:`1px solid #7C5E00`, borderRadius:8,
+            background:bannerDemo.bg, border:`1px solid ${bannerDemo.border}`, borderRadius:8,
             padding:"10px 16px", marginBottom:20, fontSize:13, color:T.warn, fontWeight:600,
           }}>⚡ Demo mode — mock data for Permit IN0012345</div>
         )}
@@ -862,8 +923,7 @@ function ResultsStage({ fileName, rows, facility, isLiveData, apiError, onReset 
               minWidth: isMobile ? 480 : 700,
             }}>
               <thead>
-                {/* DARK: dark table header */}
-                <tr style={{background:"#0D1017"}}>
+                <tr style={{background:theadBg}}>
                   {visibleCols.map(col => (
                     <th key={col.key} style={{
                       padding: isMobile ? "11px 12px" : "11px 14px",
@@ -948,6 +1008,23 @@ export default function App() {
   const [isLiveData, setIsLiveData] = useState(false);
   const [apiError,   setApiError  ] = useState(null);
 
+  // ─── Adaptive theme: light by default, dark when OS dark mode is active ──────
+  const [darkMode, setDarkMode] = useState(
+    () => typeof window !== "undefined"
+      && window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = e => setDarkMode(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Set module-level T and isDark BEFORE any child renders
+  isDark = darkMode;
+  T = darkMode ? DARK_T : LIGHT_T;
+
+  // ─── File processing ──────────────────────────────────────────────────────────
   const processFile = async (file) => {
     if (file) setFileName(file.name);
     setStage("loading");
