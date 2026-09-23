@@ -1078,6 +1078,14 @@ export default function App() {
   T            = darkMode ? DARK_T : LIGHT_T;
   themeToggle  = toggleTheme;
 
+  // Paint html+body so browser chrome never shows white edges in dark mode
+  useEffect(() => {
+    const bg = darkMode ? DARK_T.bg : LIGHT_T.bg;
+    document.documentElement.style.background = bg;
+    document.body.style.background            = bg;
+    document.body.style.margin                = "0";
+  }, [darkMode]);
+
   // ─── File processing ──────────────────────────────────────────────────────────
   const processFile = async (file) => {
     if (file) setFileName(file.name);
