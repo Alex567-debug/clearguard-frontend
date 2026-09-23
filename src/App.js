@@ -4,7 +4,8 @@
  * Connects to:  https://saas-npdes-backend-production.up.railway.app
  * Endpoint:     POST /api/parse-permit  (multipart/form-data, field: "file")
  *
- * v4 — Adaptive theme (light by default / dark when OS dark mode is on)
+ * v5 — Adaptive theme: light 07:00–20:00, dark 20:00–07:00 (auto by time of day)
+ *        Manual ☀/🌙 toggle in nav saves override to localStorage
  * Mobile fixes:
  *  • Touch targets ≥ 44px on all interactive elements
  *  • Nav action buttons: minHeight 44px
@@ -60,6 +61,13 @@ const DARK_T = {
 // in the same synchronous render cycle — all components see the updated values.
 let T = LIGHT_T;
 let isDark = false;
+let themeToggle = () => {}; // set by App(); called by Nav toggle button
+
+// Returns true if current local hour is in "night" range (20:00–07:00)
+function isNightTime() {
+  const h = new Date().getHours();
+  return h < 7 || h >= 20;
+}
 
 // ─── PARAM NAMES ─────────────────────────────────────────────────────────────
 const PARAM_NAMES = {
@@ -430,6 +438,27 @@ function Nav({ onReset, onExport }) {
             {isMobile ? "↑ Upload" : "↑ New upload"}
           </button>
         )}
+        {/* ── Theme toggle ☀/🌙 ── */}
+        <button
+          onClick={themeToggle}
+          className="cg-no-print"
+          title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+          style={{
+            width: BTN_H, height: BTN_H,
+            borderRadius: 8,
+            background: "none",
+            border: `1px solid ${T.border}`,
+            color: T.muted,
+            fontSize: 18,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", flexShrink: 0, padding: 0,
+            boxSizing: "border-box",
+            transition: "border-color 0.15s",
+          }}
+        >
+          {isDark ? "☀" : "🌙"}
+        </button>
+
         <button
           onClick={onExport}
           style={{
@@ -1008,21 +1037,46 @@ export default function App() {
   const [isLiveData, setIsLiveData] = useState(false);
   const [apiError,   setApiError  ] = useState(null);
 
-  // ─── Adaptive theme: light by default, dark when OS dark mode is active ──────
-  const [darkMode, setDarkMode] = useState(
-    () => typeof window !== "undefined"
-      && window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+  // ─── Adaptive theme: light 07:00–20:00, dark 20:00–07:00 ────────────────────
+  // localStorage key "cg-theme" stores "dark"|"light" for manual override, or
+  // is absent to follow the time-of-day rule automatically.
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem("cg-theme");
+      if (saved === "dark")  return true;
+      if (saved === "light") return false;
+    } catch {}
+    return isNightTime();
+  });
+
+  // Re-check every minute so the theme flips automatically at 07:00 and 20:00
+  // (only when user has NOT set a manual override)
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = e => setDarkMode(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const tid = setInterval(() => {
+      try {
+        if (!localStorage.getItem("cg-theme")) {
+          setDarkMode(isNightTime());
+        }
+      } catch {
+        setDarkMode(isNightTime());
+      }
+    }, 60_000);
+    return () => clearInterval(tid);
   }, []);
 
-  // Set module-level T and isDark BEFORE any child renders
-  isDark = darkMode;
-  T = darkMode ? DARK_T : LIGHT_T;
+  // Manual toggle — saves preference to localStorage
+  const toggleTheme = () => {
+    setDarkMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem("cg-theme", next ? "dark" : "light"); } catch {}
+      return next;
+    });
+  };
+
+  // Set module-level globals BEFORE any child renders
+  isDark       = darkMode;
+  T            = darkMode ? DARK_T : LIGHT_T;
+  themeToggle  = toggleTheme;
 
   // ─── File processing ──────────────────────────────────────────────────────────
   const processFile = async (file) => {
